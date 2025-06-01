@@ -33,7 +33,7 @@ ABOUT --insert-toolchange-call:
   You can configure the safe position per machine in LinuxCNC by:
     1. Adding a REMAP line to your INI file, for example:
          [RS274NGC]
-         REMAP=M6 modalgroup=6 prolog=change_prolog ngc=toolchange
+         REMAP=M6 modalgroup=6 ngc=toolchange
     2. Creating toolchange.ngc in your nc_subroutines folder, for example:
          G53 G0 Z0
          G53 G0 X0 Y0

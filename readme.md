@@ -56,7 +56,7 @@ To use the safe toolchange call feature, configure your LinuxCNC install as foll
 
 ```ini
 [RS274NGC]
-REMAP=M6 modalgroup=6 prolog=change_prolog ngc=toolchange
+REMAP=M6 modalgroup=6 ngc=toolchange
 ```
 
 **Create `toolchange.ngc` in your `nc_subroutines` directory:**
