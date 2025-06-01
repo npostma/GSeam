@@ -27,19 +27,34 @@ DETAILS:
   - At the end, script validates output and reports summary: toolchanges, comments kept/removed, renumbered lines, total output lines, and any validation errors.
 
 ABOUT --insert-toolchange-call:
-  When enabled, before every Tn M6 toolchange, the line "O <toolchange> call" is inserted.
-  This will only be effective if you have set up a toolchange.ngc subroutine on your machine.
-  That subroutine is responsible for moving the machine to a safe toolchange position and waiting for the operator.
-  You can configure the safe position per machine in LinuxCNC by:
-    1. Adding a REMAP line to your INI file, for example:
-         [RS274NGC]
-         REMAP=M6 modalgroup=6 ngc=toolchange
-    2. Creating toolchange.ngc in your nc_subroutines folder, for example:
-         G53 G0 Z0
-         G53 G0 X0 Y0
-         M0 (Change tool and press cycle start)
-  For more info: http://linuxcnc.org/docs/html/remap/remap.html
+  There are two ways to implement safe toolchanges in LinuxCNC:
 
+  1. **Manual subroutine call:**
+     - If you want to explicitly call a toolchange subroutine in your G-code, enable `--insert-toolchange-call`.
+     - This will insert a line like `O <toolchange> call` before every `Tn M6`.
+     - Make sure you have a matching subroutine (with `O<toolchange> sub ... O<toolchange> endsub`) in your subroutine path.
+
+  2. **REMAP-based toolchange (recommended for most users):**
+     - If you configure REMAP in your INI, LinuxCNC will automatically call your subroutine for every `Tn M6`.
+     - Your G-code only needs `Tn M6`—you do **NOT** need the `--insert-toolchange-call` option in this case.
+     - Example INI config:
+       ```
+       [RS274NGC]
+       REMAP=M6 modalgroup=6 ngc=toolchange
+       ```
+     - Example toolchange.ngc:
+       ```
+       O<toolchange> sub
+       G53 G0 Z0
+       G53 G0 X0 Y0
+       O<toolchange> endsub
+       M2
+       ```
+
+  For most workflows, option 2 (REMAP) is preferred.
+  Only use --insert-toolchange-call if you need manual invocation of the subroutine outside the standard toolchange process.
+
+  See the LinuxCNC [Remap documentation](http://linuxcnc.org/docs/html/remap/remap.html) for advanced usage.
 """
 import sys
 import re
