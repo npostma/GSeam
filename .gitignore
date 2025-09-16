@@ -1,2 +1,4 @@
 .idea
 output.ngc
+pcb.ngc
+tool.tbl
