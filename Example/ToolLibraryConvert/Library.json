@@ -1,0 +1,613 @@
+{
+    "data": [
+        {
+            "BMC": "hss",
+            "description": "3x6x8",
+            "expressions": {
+                "tool_bodyLength": "25 mm",
+                "tool_description": "'3x6x8'",
+                "tool_diameter": "3 mm",
+                "tool_fluteLength": "8 mm",
+                "tool_overallLength": "53 mm",
+                "tool_shaftDiameter": "6 mm",
+                "tool_shoulderLength": "13 mm"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 3,
+                "HAND": true,
+                "LB": 25,
+                "LCF": 8,
+                "NOF": 4,
+                "OAL": 53,
+                "SFDM": 6,
+                "assemblyGaugeLength": 25,
+                "shoulder-diameter": 3,
+                "shoulder-length": 13
+            },
+            "guid": "af76c538-9286-4eb5-9a2b-201fe84c2c43",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 40,
+                "length-offset": 40,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 40,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "f_n": 0.06666666666666667,
+                        "f_z": 0.05,
+                        "guid": "b020760b-99a5-491f-adb5-3a813f3d3aaa",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "n_ramp": 5000,
+                        "name": "Default preset",
+                        "ramp-angle": 2,
+                        "tool-coolant": "flood",
+                        "use-stepdown": false,
+                        "use-stepover": false,
+                        "v_c": 47.1238898038469,
+                        "v_f": 1000,
+                        "v_f_leadIn": 1000,
+                        "v_f_leadOut": 1000,
+                        "v_f_plunge": 333.3333333333333,
+                        "v_f_ramp": 333.3333333333333,
+                        "v_f_transition": 1000
+                    }
+                ]
+            },
+            "type": "flat end mill",
+            "unit": "millimeters",
+            "vendor": ""
+        },
+        {
+            "BMC": "hss",
+            "description": "8mm china",
+            "expressions": {
+                "tool_bodyLength": "38 mm",
+                "tool_description": "'8mm china'",
+                "tool_diameter": "8 mm",
+                "tool_fluteLength": "22 mm",
+                "tool_numberOfFlutes": "2",
+                "tool_overallLength": "66 mm",
+                "tool_shaftDiameter": "8 mm",
+                "tool_shoulderLength": "38 mm"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 8,
+                "HAND": true,
+                "LB": 38,
+                "LCF": 22,
+                "NOF": 2,
+                "OAL": 66,
+                "SFDM": 8,
+                "assemblyGaugeLength": 38,
+                "shoulder-diameter": 8,
+                "shoulder-length": 38
+            },
+            "guid": "c536ac61-f2b4-43a4-b5b2-70f0275852fc",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 41,
+                "length-offset": 41,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 41,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "f_n": 0.06666666666666667,
+                        "f_z": 0.1,
+                        "guid": "9ce1597d-6641-401a-8cc2-1262919e8aea",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "n_ramp": 5000,
+                        "name": "Default preset",
+                        "ramp-angle": 2,
+                        "tool-coolant": "flood",
+                        "use-stepdown": false,
+                        "use-stepover": false,
+                        "v_c": 125.66370614359172,
+                        "v_f": 1000,
+                        "v_f_leadIn": 1000,
+                        "v_f_leadOut": 1000,
+                        "v_f_plunge": 333.3333333333333,
+                        "v_f_ramp": 333.3333333333333,
+                        "v_f_transition": 1000
+                    }
+                ]
+            },
+            "type": "flat end mill",
+            "unit": "millimeters",
+            "vendor": ""
+        },
+        {
+            "BMC": "hss",
+            "description": "",
+            "expressions": {
+                "tool_bodyLength": "51 mm",
+                "tool_fluteLength": "20 mm",
+                "tool_numberOfFlutes": "2",
+                "tool_overallLength": "79 mm",
+                "tool_shoulderLength": "26 mm"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 6,
+                "HAND": true,
+                "LB": 51,
+                "LCF": 20,
+                "NOF": 2,
+                "OAL": 79,
+                "RE": 0.75,
+                "SFDM": 6,
+                "assemblyGaugeLength": 51,
+                "shoulder-diameter": 6,
+                "shoulder-length": 26
+            },
+            "guid": "24c2d381-549e-486d-9fbf-780240cb7439",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 42,
+                "length-offset": 42,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 42,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "f_n": 0.06666666666666667,
+                        "f_z": 0.1,
+                        "guid": "8326c024-39a2-49a5-9afd-a932ad8dd044",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "n_ramp": 5000,
+                        "name": "Default preset",
+                        "ramp-angle": 2,
+                        "tool-coolant": "flood",
+                        "use-stepdown": false,
+                        "use-stepover": false,
+                        "v_c": 94.2477796076938,
+                        "v_f": 1000,
+                        "v_f_leadIn": 1000,
+                        "v_f_leadOut": 1000,
+                        "v_f_plunge": 333.3333333333333,
+                        "v_f_ramp": 333.3333333333333,
+                        "v_f_transition": 1000
+                    }
+                ]
+            },
+            "type": "bull nose end mill",
+            "unit": "millimeters",
+            "vendor": ""
+        },
+        {
+            "BMC": "hss",
+            "description": "10x10x22",
+            "expressions": {
+                "tool_bodyLength": "44 mm",
+                "tool_description": "'10x10x22'",
+                "tool_diameter": "10 mm",
+                "tool_fluteLength": "22 mm",
+                "tool_numberOfFlutes": "2",
+                "tool_overallLength": "72 mm",
+                "tool_shaftDiameter": "10 mm",
+                "tool_shoulderLength": "40 mm"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 10,
+                "HAND": true,
+                "LB": 44,
+                "LCF": 22,
+                "NOF": 2,
+                "OAL": 72,
+                "SFDM": 10,
+                "assemblyGaugeLength": 44,
+                "shoulder-diameter": 10,
+                "shoulder-length": 40
+            },
+            "guid": "1f61cb9f-e94c-4005-9c5c-656e43540eb6",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 43,
+                "length-offset": 43,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 43,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "f_n": 0.06666666666666667,
+                        "f_z": 0.1,
+                        "guid": "32f564b2-5f21-4e2d-8bcd-db0febb5fb04",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "n_ramp": 5000,
+                        "name": "Default preset",
+                        "ramp-angle": 2,
+                        "tool-coolant": "flood",
+                        "use-stepdown": false,
+                        "use-stepover": false,
+                        "v_c": 157.07963267948963,
+                        "v_f": 1000,
+                        "v_f_leadIn": 1000,
+                        "v_f_leadOut": 1000,
+                        "v_f_plunge": 333.3333333333333,
+                        "v_f_ramp": 333.3333333333333,
+                        "v_f_transition": 1000
+                    }
+                ]
+            },
+            "type": "flat end mill",
+            "unit": "millimeters",
+            "vendor": ""
+        },
+        {
+            "BMC": "hss",
+            "description": "TestEngrave",
+            "expressions": {
+                "tool_description": "'TestEngrave'",
+                "tool_diameter": "3.175 mm",
+                "tool_inclusiveAngle": "60 degrees",
+                "tool_shaftDiameter": "3.175 mm",
+                "tool_vendor": "'Test'"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 3.175,
+                "HAND": true,
+                "LB": 36,
+                "LCF": 18,
+                "NOF": 2,
+                "OAL": 72,
+                "SFDM": 3.175,
+                "TA": 30,
+                "assemblyGaugeLength": 36,
+                "shoulder-diameter": 3.175,
+                "shoulder-length": 27,
+                "tip-diameter": 0
+            },
+            "guid": "437f8913-71e1-47bb-9951-afb4da48efae",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 60,
+                "length-offset": 60,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 60,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "f_n": 0.06666666666666667,
+                        "f_z": 0.1,
+                        "guid": "c373eec4-545e-4a17-b5a9-cfdd793d9035",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "n_ramp": 5000,
+                        "name": "Default preset",
+                        "ramp-angle": 2,
+                        "tool-coolant": "flood",
+                        "use-stepdown": false,
+                        "use-stepover": false,
+                        "v_c": 49.87278337573795,
+                        "v_f": 1000,
+                        "v_f_leadIn": 1000,
+                        "v_f_leadOut": 1000,
+                        "v_f_plunge": 333.3333333333333,
+                        "v_f_ramp": 333.3333333333333,
+                        "v_f_transition": 1000
+                    }
+                ]
+            },
+            "type": "chamfer mill",
+            "unit": "millimeters",
+            "vendor": "Test"
+        },
+        {
+            "BMC": "hss",
+            "description": "",
+            "expressions": {
+                "tool_diameter": "1 mm",
+                "tool_overallLength": "100 mm",
+                "tool_tipAngle": "118 degrees"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 1,
+                "HAND": true,
+                "LB": 100,
+                "LCF": 80,
+                "NOF": 2,
+                "OAL": 100,
+                "SFDM": 1,
+                "SIG": 118,
+                "assemblyGaugeLength": 100,
+                "shoulder-length": 90
+            },
+            "guid": "b97e194e-8735-49b9-896c-adb9e04b1eb4",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 20,
+                "length-offset": 20,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 20,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "guid": "518b555e-90b2-4ca6-ba81-c9cffe4e7876",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "name": "Default preset",
+                        "tool-coolant": "flood",
+                        "use-feed-per-revolution": false,
+                        "v_c": 15.707963267948964,
+                        "v_f_plunge": 1000,
+                        "v_f_retract": 1000
+                    }
+                ]
+            },
+            "type": "drill",
+            "unit": "millimeters",
+            "vendor": ""
+        },
+        {
+            "BMC": "hss",
+            "description": "HSS 6.8",
+            "expressions": {
+                "tool_description": "'HSS 6.8'",
+                "tool_diameter": "6.8 mm",
+                "tool_overallLength": "120 mm"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 6.8,
+                "HAND": true,
+                "LB": 100,
+                "LCF": 80,
+                "NOF": 2,
+                "OAL": 120,
+                "SFDM": 6.8,
+                "SIG": 118,
+                "assemblyGaugeLength": 100,
+                "shoulder-length": 90
+            },
+            "guid": "2c162ebb-49c7-401e-9339-ad50e6f02058",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 21,
+                "length-offset": 21,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 21,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "shaft": {
+                "segments": [
+                    {
+                        "height": 6.8,
+                        "lower-diameter": 6.8,
+                        "upper-diameter": 6.8
+                    }
+                ],
+                "type": "shaft"
+            },
+            "start-values": {
+                "presets": [
+                    {
+                        "guid": "6af3c172-4ff3-4d18-b193-cb94a1ff37fc",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "name": "Default preset",
+                        "tool-coolant": "flood",
+                        "use-feed-per-revolution": false,
+                        "v_c": 106.81415022205296,
+                        "v_f_plunge": 1000,
+                        "v_f_retract": 1000
+                    }
+                ]
+            },
+            "type": "drill",
+            "unit": "millimeters",
+            "vendor": ""
+        },
+        {
+            "BMC": "ti coated",
+            "description": "",
+            "expressions": {
+                "tool_diameter": "3 mm",
+                "tool_material": "'ti coated'",
+                "tool_tipAngle": "90 degrees"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 3,
+                "HAND": true,
+                "LB": 18,
+                "LCF": 12,
+                "NOF": 2,
+                "OAL": 36,
+                "SFDM": 3,
+                "SIG": 90,
+                "assemblyGaugeLength": 18,
+                "shoulder-length": 15,
+                "tip-diameter": 0
+            },
+            "guid": "b2e27cce-05ab-48f6-9d5e-a6154c139d65",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 1,
+                "length-offset": 1,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 1,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "f_z": 0.1,
+                        "guid": "c1d6bf3e-94f4-4d67-9dd1-097117d035b7",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 5000,
+                        "name": "Default preset",
+                        "tool-coolant": "flood",
+                        "use-feed-per-revolution": false,
+                        "v_c": 47.1238898038469,
+                        "v_f": 1000,
+                        "v_f_leadIn": 1000,
+                        "v_f_leadOut": 1000,
+                        "v_f_plunge": 333.3333333333333,
+                        "v_f_ramp": 333.3333333333333,
+                        "v_f_retract": 333.3333333333333,
+                        "v_f_transition": 1000
+                    }
+                ]
+            },
+            "type": "spot drill",
+            "unit": "millimeters",
+            "vendor": ""
+        },
+        {
+            "BMC": "ti coated",
+            "description": "",
+            "expressions": {
+                "tool_diameter": "3 mm",
+                "tool_material": "'ti coated'",
+                "tool_number": "2",
+                "tool_tipAngle": "120 degrees"
+            },
+            "geometry": {
+                "CSP": false,
+                "DC": 3,
+                "HAND": true,
+                "LB": 18,
+                "LCF": 12,
+                "NOF": 2,
+                "OAL": 36,
+                "SFDM": 3,
+                "SIG": 120,
+                "assemblyGaugeLength": 18,
+                "shoulder-length": 15,
+                "tip-diameter": 0
+            },
+            "guid": "9b54fd6d-381b-49a9-b848-a7c2392ec279",
+            "post-process": {
+                "break-control": false,
+                "comment": "",
+                "diameter-offset": 2,
+                "length-offset": 2,
+                "live": true,
+                "manual-tool-change": false,
+                "number": 2,
+                "turret": 0
+            },
+            "product-id": "",
+            "product-link": "",
+            "start-values": {
+                "presets": [
+                    {
+                        "expressions": {
+                            "tool_coolant": "'disabled'",
+                            "tool_spindleSpeed": "20000 rpm"
+                        },
+                        "f_z": 0.025,
+                        "guid": "c1d6bf3e-94f4-4d67-9dd1-097117d035b7",
+                        "material": {
+                            "category": "all",
+                            "query": "",
+                            "use-hardness": false
+                        },
+                        "n": 20000,
+                        "name": "Default preset",
+                        "tool-coolant": "disabled",
+                        "use-feed-per-revolution": false,
+                        "v_c": 188.4955592153876,
+                        "v_f": 1000,
+                        "v_f_leadIn": 1000,
+                        "v_f_leadOut": 1000,
+                        "v_f_plunge": 333.3333333333333,
+                        "v_f_ramp": 333.3333333333333,
+                        "v_f_retract": 333.3333333333333,
+                        "v_f_transition": 1000
+                    }
+                ]
+            },
+            "type": "spot drill",
+            "unit": "millimeters",
+            "vendor": ""
+        }
+    ],
+    "version": 36
+}
