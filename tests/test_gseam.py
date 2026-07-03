@@ -170,6 +170,19 @@ class TestMerge(TempDirTest):
         self.assertRegex(out[calls[0] + 1], r"^T3 M6")
         self.assertEqual(out[calls[1] - 1], "T5")
 
+    def test_toolchange_call_with_table_names_the_tool(self):
+        out, _ = gseam.merge(
+            self.parsed(fusion_file(tool=4)),
+            "out.ngc", insert_toolchange_call=True, skip_same_tool=True,
+            keep_all_comments=False, table=SPOT_TABLE)
+        infos = [s for s in out if s.startswith("(DEBUG, => T4")]
+        self.assertEqual(len(infos), 1)
+        self.assertIn("drill - 5mm", infos[0])
+        self.assertIn("D5mm", infos[0])
+        # geen haakjes uit de tabel-omschrijving in de comment (zou de
+        # G-code-comment vroegtijdig sluiten)
+        self.assertNotRegex(infos[0][1:-1], r"[()]")
+
     def test_single_footer_and_header(self):
         # NB: verschillende zmin -> verschillende tool-comments; identieke
         # tool-comments worden bewust gededupliceerd

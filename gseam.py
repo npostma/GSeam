@@ -537,9 +537,15 @@ def comment_filter(line: str, keep_all: bool) -> bool:
 
 def merge(parsed: list[ParsedFile], out_name: str, *,
           insert_toolchange_call: bool, skip_same_tool: bool,
-          keep_all_comments: bool, jobcard: list[str] | None = None
-          ) -> tuple[list[str], dict]:
-    """Return (lines-without-N-numbers, stats)."""
+          keep_all_comments: bool, jobcard: list[str] | None = None,
+          table: dict[int, dict] | None = None) -> tuple[list[str], dict]:
+    """Return (lines-without-N-numbers, stats).
+
+    With a tool table, every inserted toolchange also gets a
+    human-readable (DEBUG,...) line naming the target tool (type,
+    description, diameter) - shown in AXIS around the swap pause,
+    where bare 'T4' means nothing to the operator.
+    """
     stats = {"toolchanges": 0, "toolchange_calls": 0, "skipped_toolchanges": 0,
              "comments_kept": 0, "comments_removed": 0}
     out: list[str] = []
@@ -581,6 +587,12 @@ def merge(parsed: list[ParsedFile], out_name: str, *,
                         stats["skipped_toolchanges"] += 1
                         continue
                     if insert_toolchange_call:
+                        info = (table or {}).get(op.tool)
+                        if info:
+                            desc = re.sub(r"[()]", "",
+                                          info.get("desc", "")).strip()
+                            out.append(f"(DEBUG, => T{op.tool}: {desc} "
+                                       f"D{info.get('diam', 0):g}mm)")
                         # bare Tn prefetch first, so the routine knows the
                         # TARGET tool and can show it at the swap pause
                         out.append(f"T{op.tool}")
@@ -864,7 +876,7 @@ def main(argv=None) -> int:
         insert_toolchange_call=args.insert_toolchange_call,
         skip_same_tool=not args.keep_duplicate_toolchanges,
         keep_all_comments=args.keep_all_comments,
-        jobcard=card)
+        jobcard=card, table=table)
 
     body = merged if args.no_renumber else renumber(merged, args.step)
     out_lines = ["%"] + body + ["%"]
