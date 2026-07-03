@@ -56,6 +56,8 @@ def parse_number(val, default=None):
 
 
 def build_comment(entry: dict) -> str:
+    """Human-readable tool.tbl comment: type + description + extras
+    (corner radius, tip angle, flute count) from the library entry."""
     ttype = (entry.get("type") or "").strip()
     expr = entry.get("expressions", {})
     desc = entry.get("description") or expr.get("tool_description") or ""
@@ -83,6 +85,8 @@ def build_comment(entry: dict) -> str:
 
 
 def resolve_diameter(entry: dict) -> float:
+    """Tool diameter: geometry.DC first, expressions.tool_diameter as
+    fallback (may be a '5mm'-style string)."""
     dc = parse_number(entry.get("geometry", {}).get("DC"))
     if dc is not None:
         return dc
@@ -91,6 +95,7 @@ def resolve_diameter(entry: dict) -> float:
 
 
 def parse_pocket_map(spec: str | None) -> dict[int, int]:
+    """Parse a 'T1:5,T2:3' pocket-mapping option -> {1: 5, 2: 3}."""
     mapping: dict[int, int] = {}
     if not spec:
         return mapping
@@ -124,6 +129,7 @@ def read_existing_table(path: Path) -> dict[int, dict]:
 
 
 def main(argv=None) -> int:
+    """CLI entry point; returns the exit code (0 ok, 2 input errors)."""
     ap = argparse.ArgumentParser(
         description="Convert Fusion 360 Library.json to LinuxCNC tool.tbl "
                     "(preserves measured Z by default)")

@@ -78,6 +78,7 @@ NAG_COMMENT = re.compile(
 
 
 def strip_n(line: str) -> str:
+    """Strip a leading N-number (line number) off a G-code line."""
     return RE_N_PREFIX.sub("", line)
 
 
@@ -231,6 +232,16 @@ class OpAnalysis:
 
 
 def analyze_op(op: Operation) -> OpAnalysis:
+    """Walk one operation and extract holes, Zmin, times and XY feed paths.
+
+    Hole detection covers both canned drilling cycles (G81/G82/G83/G73/G85:
+    every XY position while the cycle is active) and Fusion's expanded
+    peck style (G1 plunges below Z0 without XY words -> one hole per XY,
+    the many pecks at the same spot deduplicate via the set). G1 moves
+    that DO carry XY words are milling, not drilling. G53 (machine-coord)
+    moves invalidate the tracked position. Times are rough: feed distance
+    / F plus rapids at RAPID_MMPM.
+    """
     an = OpAnalysis(op.tool)
     x = y = z = None
     feed = None
@@ -292,6 +303,8 @@ def analyze_op(op: Operation) -> OpAnalysis:
 
 
 def tool_kind(tool: int | None, table: dict[int, dict]) -> str:
+    """Classify a tool as 'spot' / 'drill' / 'other' via its tool-table
+    description (that is the only place the tool TYPE is known)."""
     desc = table.get(tool, {}).get("desc", "").lower()
     if "spot" in desc:
         return "spot"
@@ -326,6 +339,8 @@ def spot_coverage(op_infos: list[tuple], table: dict[int, dict]) -> list[str]:
 
 # ---------------------------------------------------------------- --secure
 def read_ini_limits(ini: Path) -> dict[str, tuple[float, float]]:
+    """MIN/MAX_LIMIT per axis from the [AXIS_X/Y/Z] sections of a
+    LinuxCNC .ini -> {'X': (min, max), ...}; incomplete axes omitted."""
     limits, section = {}, None
     for line in ini.read_text(encoding="utf-8",
                               errors="replace").splitlines():
@@ -347,6 +362,8 @@ def read_ini_limits(ini: Path) -> dict[str, tuple[float, float]]:
 
 
 def read_var_g54(var: Path) -> dict[str, float]:
+    """Current G54 offset + rotation from linuxcnc.var: parameters
+    5221/5222/5223 (X/Y/Z) and 5230 (rotation, degrees) -> keys X/Y/Z/R."""
     vals = {}
     want = {"5221": "X", "5222": "Y", "5223": "Z", "5230": "R"}
     for line in var.read_text(encoding="utf-8",
@@ -390,6 +407,9 @@ def secure_check(ext: "Extents", limits: dict, g54: dict) -> list[str]:
 
 # ---------------------------------------------------------------- job card
 def job_card(op_infos: list[tuple], table: dict[int, dict]) -> list[str]:
+    """Build the (JOB:)/(OP:) comment block for the top of the merged
+    file: per operation the tool, description, hole count, Zmin and a
+    rough time estimate. Shown by AXIS when loading the program."""
     lines = []
     total = 0.0
     for name, op, an in op_infos:
@@ -418,6 +438,10 @@ _SVG_COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4",
 
 def write_svg(path: Path, op_infos: list[tuple], table: dict[int, dict],
               ext: "Extents"):
+    """Top-down SVG preview: holes as circles at true tool diameter (one
+    colour per tool), XY feed paths, the work origin as a cross and a
+    legend with hole counts. Machine Y points up. Returns False when
+    there is no XY data to draw."""
     if "X" not in ext.mins or "Y" not in ext.mins:
         return False
     pad = 10.0
@@ -495,6 +519,7 @@ def read_tool_table(path: Path) -> dict[int, dict]:
 
 
 def find_default_tool_table(script_path: Path) -> Path | None:
+    """tool.tbl one directory above this script (config-repo layout)."""
     cand = script_path.resolve().parent.parent / "tool.tbl"
     return cand if cand.is_file() else None
 
@@ -574,6 +599,8 @@ def merge(parsed: list[ParsedFile], out_name: str, *,
 
 
 def renumber(lines: list[str], step: int) -> list[str]:
+    """Number all code lines in one sequence (N<step>, N<2*step>, ...).
+    Comments, blank lines, % and O-word lines are never numbered."""
     out = []
     n = step
     for line in lines:
@@ -588,6 +615,8 @@ def renumber(lines: list[str], step: int) -> list[str]:
 
 # ---------------------------------------------------------------- checks
 def cross_file_checks(parsed: list[ParsedFile]) -> tuple[list[str], list[str]]:
+    """Checks across the whole file set: unit mismatch is an error,
+    multiple work offsets (G54/G55/...) only a warning."""
     errors, warnings = [], []
     units = {pf.units for pf in parsed if pf.units}
     if len(units) > 1:
@@ -659,6 +688,8 @@ def numbered_ngc_files(directory: Path) -> tuple[list[Path], list[str]]:
 
 
 def main(argv=None) -> int:
+    """CLI entry point; returns the exit code (0 ok, 1 validation
+    errors, 2 usage/input errors) so shell pipelines can rely on it."""
     ap = argparse.ArgumentParser(
         description="Merge, clean and validate CAM G-code for LinuxCNC.",
         formatter_class=argparse.RawDescriptionHelpFormatter)
