@@ -26,8 +26,14 @@ O<toolchange> sub
   #<f_fast> = #<_ini[TOOLSENSOR]FAST_F>
   #<f_slow> = #<_ini[TOOLSENSOR]SLOW_F>
 
+  ; historie-log: APPEND zodat je altijd kunt terugzien wat er gebeurd is
+  (LOGAPPEND,toolchange.log)
+  (LOG, ==== toolwissel: van T#<_current_tool> naar T#<_selected_tool> ====)
+
   ; ===== sensor nog niet geconfigureerd -> klassiek gedrag =====
   O100 IF [[#<sx> EQ 0] AND [#<sy> EQ 0]]
+    (LOG, sensor niet geconfigureerd - wissel ZONDER meting)
+    (LOGCLOSE)
     G90
     G53 G0 Z0
     G53 G0 X0 Y0
@@ -51,6 +57,8 @@ O<toolchange> sub
   O120 IF [#5070 EQ 0]
     G90
     G53 G0 Z0
+    (LOG, FOUT: toolsensor niet geraakt bij referentie - afgebroken)
+    (LOGCLOSE)
     (MSG, Toolsensor NIET geraakt bij referentie - GEEN meting! Druk ESCAPE om af te breken)
     M0
     O<toolchange> return
@@ -61,12 +69,16 @@ O<toolchange> sub
   O121 IF [#5070 EQ 0]
     G90
     G53 G0 Z0
+    (LOG, FOUT: toolsensor kwijt bij nameten referentie - afgebroken)
+    (LOGCLOSE)
     (MSG, Toolsensor kwijt bij nameten referentie - druk ESCAPE om af te breken)
     M0
     O<toolchange> return
   O121 ENDIF
   G90
   #<zref> = #5063                 ; werk-Z van de sensor met de HUIDIGE tool
+  M68 E12 Q[#<zref>]              ; -> paneel "Sensor Z"
+  (LOG, referentie T#<_current_tool>: sensor werk-Z = #<zref>)
 
   ; ===== 2: wisselen =====
   G53 G0 Z0
@@ -82,6 +94,8 @@ O<toolchange> sub
   O130 IF [#5070 EQ 0]
     G90
     G53 G0 Z0
+    (LOG, FOUT: toolsensor niet geraakt met nieuwe tool - afgebroken)
+    (LOGCLOSE)
     (MSG, Toolsensor NIET geraakt met nieuwe tool - Z0 NIET aangepast! Druk ESCAPE om af te breken)
     M0
     O<toolchange> return
@@ -92,17 +106,24 @@ O<toolchange> sub
   O131 IF [#5070 EQ 0]
     G90
     G53 G0 Z0
+    (LOG, FOUT: toolsensor kwijt bij nameten nieuwe tool - afgebroken)
+    (LOGCLOSE)
     (MSG, Toolsensor kwijt bij nameten nieuwe tool - Z0 NIET aangepast! Druk ESCAPE om af te breken)
     M0
     O<toolchange> return
   O131 ENDIF
   G90
+  #<znew> = #5063
+  #<dz>   = [#<znew> - #<zref>]   ; lengteverschil nieuwe vs oude tool
 
   ; ===== 4: G54-Z verschuiven naar de nieuwe tool-lengte =====
   ; we staan op het triggerpunt van de nieuwe tool; geef dat punt dezelfde
   ; werk-Z als de referentie -> lengteverschil zit nu in G54
   G10 L20 P1 Z[#<zref>]
-  (DEBUG, Tool-lengte verrekend: sensor werk-Z = #<zref>)
+  M68 E13 Q[#<dz>]                ; -> paneel "laatste dZ"
+  (LOG, nieuwe tool T#<_selected_tool>: sensor werk-Z was #<znew>, dZ = #<dz> mm - G54-Z verschoven)
+  (LOGCLOSE)
+  (DEBUG, Tool-lengte verrekend: dZ = #<dz> mm)
 
   G53 G0 Z0
 
