@@ -79,7 +79,8 @@ Two ways to get a safe toolchange position:
 
 2. **Explicit subroutine call:** run gseam with
    `--insert-toolchange-call` to insert `O <toolchange> call` before every
-   toolchange, and provide a `toolchange.ngc` in your subroutine path:
+   toolchange, and provide a `toolchange.ngc` in your subroutine path.
+   Minimal version:
 
    ```gcode
    O<toolchange> sub
@@ -89,6 +90,42 @@ Two ways to get a safe toolchange position:
    O<toolchange> endsub
    M2
    ```
+
+   Never combine both: with `REMAP=M6` active, an inserted
+   `O <toolchange> call` would run the routine **twice** per change.
+
+### Multi-tool programs and tool length — read this
+
+Merging single-tool files into one program has a hidden trap: with manual
+collets the stickout is not repeatable, and **mid-program (during the M0
+pause) there is no MDI/touch-off available** in LinuxCNC. If your tool
+table has `Z 0.000` everywhere, the second tool runs with the first tool's
+work Z — too deep or in the air.
+
+Solutions, simplest first:
+
+* keep all tools at an identical, mechanically-repeatable stickout, or
+* measure real tool lengths into the tool table (`G10 L1`), or
+* **measure at every toolchange** on a fixed tool-length sensor. See
+  `Example/routines/toolchange.ngc` for a complete comparative routine:
+  it probes the *current* tool, pauses for the swap, probes the *new*
+  tool and shifts the work-Z by the difference — no absolute calibration
+  needed, collet stickout becomes irrelevant. The sensor position lives in
+  the INI in **machine coordinates** (`G53`, independent of work zero and
+  rotation):
+
+  ```ini
+  [TOOLSENSOR]
+  X = 0
+  Y = 0
+  PROBE_START_Z = -400
+  MAX_DEPTH = 60
+  FAST_F = 300
+  SLOW_F = 25
+  ```
+
+  Wire the sensor into `motion.probe-input` (OR it with your existing
+  probe channels) so `G38.x` sees it.
 
 ---
 

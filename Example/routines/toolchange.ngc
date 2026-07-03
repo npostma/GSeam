@@ -1,6 +1,115 @@
+; toolchange.ngc - veilige toolwissel MET automatische vergelijkende
+; tool-lengte op de vaste toolsensor (aparte sensor, positie in de INI).
+;
+; Werkt op twee manieren:
+;   - via REMAP=M6 in de INI (aanbevolen): elke "Tn M6" in G-code komt hier
+;   - via "O <toolchange> call" (gseam --insert-toolchange-call)
+;
+; Het idee (vergelijkend, geen absolute kalibratie nodig - collet-uitsteek
+; mag elke wissel anders zijn):
+;   1) meet de HUIDIGE tool op de sensor -> referentie werk-Z
+;   2) parkeer hoog, M0: wissel de tool, cycle start
+;   3) meet de NIEUWE tool op de sensor
+;   4) schuif G54-Z zodat de nieuwe tool dezelfde werk-Z heeft (G10 L20)
+;
+; VEREIST eenmalig: sensor monteren op vaste plek + [TOOLSENSOR] in de INI
+; invullen (machinecoordinaten G53!) + de sensor-ingang in HAL bij het
+; probe-signaal OR-en. Zolang X en Y allebei 0 zijn valt de routine terug
+; op het oude gedrag: parkeren + M0, zonder meting.
+
 O<toolchange> sub
-G53 G0 Z0
-G53 G0 X0 Y0
-M0 (Change tool and press cycle start)
+
+  #<sx>     = #<_ini[TOOLSENSOR]X>          ; sensorpositie, G53 machine-mm
+  #<sy>     = #<_ini[TOOLSENSOR]Y>
+  #<zstart> = #<_ini[TOOLSENSOR]PROBE_START_Z>  ; G53-Z waar de probe begint
+  #<zdepth> = #<_ini[TOOLSENSOR]MAX_DEPTH>      ; max zoekslag omlaag, mm
+  #<f_fast> = #<_ini[TOOLSENSOR]FAST_F>
+  #<f_slow> = #<_ini[TOOLSENSOR]SLOW_F>
+
+  ; ===== sensor nog niet geconfigureerd -> klassiek gedrag =====
+  O100 IF [[#<sx> EQ 0] AND [#<sy> EQ 0]]
+    G90
+    G53 G0 Z0
+    G53 G0 X0 Y0
+    (MSG, Wissel de tool. LET OP: geen lengtemeting - sensor niet geconfigureerd)
+    M0
+    O110 IF [#<_selected_tool> GE 0]
+      M61 Q#<_selected_tool>
+    O110 ENDIF
+    O<toolchange> return
+  O100 ENDIF
+
+  ; ===== 1: referentie - huidige tool op de sensor =====
+  G90
+  G21
+  G53 G0 Z0
+  G53 G0 X[#<sx>] Y[#<sy>]
+  G53 G0 Z[#<zstart>]
+  G91
+  F#<f_fast>
+  G38.3 Z-[#<zdepth>]
+  O120 IF [#5070 EQ 0]
+    G90
+    G53 G0 Z0
+    (MSG, Toolsensor NIET geraakt bij referentie - GEEN meting! Druk ESCAPE om af te breken)
+    M0
+    O<toolchange> return
+  O120 ENDIF
+  G0 Z1
+  F#<f_slow>
+  G38.3 Z-2
+  O121 IF [#5070 EQ 0]
+    G90
+    G53 G0 Z0
+    (MSG, Toolsensor kwijt bij nameten referentie - druk ESCAPE om af te breken)
+    M0
+    O<toolchange> return
+  O121 ENDIF
+  G90
+  #<zref> = #5063                 ; werk-Z van de sensor met de HUIDIGE tool
+
+  ; ===== 2: wisselen =====
+  G53 G0 Z0
+  (MSG, Wissel de tool en druk cycle start - lengte wordt daarna gemeten)
+  M0
+
+  ; ===== 3: nieuwe tool meten =====
+  G90
+  G53 G0 Z[#<zstart>]
+  G91
+  F#<f_fast>
+  G38.3 Z-[#<zdepth>]
+  O130 IF [#5070 EQ 0]
+    G90
+    G53 G0 Z0
+    (MSG, Toolsensor NIET geraakt met nieuwe tool - Z0 NIET aangepast! Druk ESCAPE om af te breken)
+    M0
+    O<toolchange> return
+  O130 ENDIF
+  G0 Z1
+  F#<f_slow>
+  G38.3 Z-2
+  O131 IF [#5070 EQ 0]
+    G90
+    G53 G0 Z0
+    (MSG, Toolsensor kwijt bij nameten nieuwe tool - Z0 NIET aangepast! Druk ESCAPE om af te breken)
+    M0
+    O<toolchange> return
+  O131 ENDIF
+  G90
+
+  ; ===== 4: G54-Z verschuiven naar de nieuwe tool-lengte =====
+  ; we staan op het triggerpunt van de nieuwe tool; geef dat punt dezelfde
+  ; werk-Z als de referentie -> lengteverschil zit nu in G54
+  G10 L20 P1 Z[#<zref>]
+  (DEBUG, Tool-lengte verrekend: sensor werk-Z = #<zref>)
+
+  G53 G0 Z0
+
+  ; onder REMAP: registreer het nieuwe toolnummer
+  O140 IF [#<_selected_tool> GE 0]
+    M61 Q#<_selected_tool>
+  O140 ENDIF
+
 O<toolchange> endsub
 M2

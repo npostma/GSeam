@@ -1,13 +1,14 @@
-## Examples
+# Tool-library conversion examples
 
-```
-py .\f360_toollib_convert.py Example/ToolLibraryConvert/Library.json   
-```
+```bash
+# sync a tool.tbl from the Fusion 360 export; if ./tool.tbl already exists
+# its measured Z offsets are PRESERVED (default --z-source preserve) and a
+# diff + .bak backup are produced
+python3 ../../f360_toollib_convert.py Library.json -o tool.tbl
 
-Generated `tool.tbl` example file
+# see what would change without writing
+python3 ../../f360_toollib_convert.py Library.json -o tool.tbl --dry-run
 
+# force a fixed Z length for all tools instead
+python3 ../../f360_toollib_convert.py Library.json -o tool.tbl --z-value -142.357
 ```
-py .\f360_toollib_convert.py Example/ToolLibraryConvert/Library.json --z-value -142.357
-```
-
-Generated `tool.tbl` example file with fixed z offset values
