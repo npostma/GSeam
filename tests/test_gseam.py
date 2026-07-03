@@ -211,9 +211,42 @@ class TestFilesAndTable(TempDirTest):
     def test_numbered_sort(self):
         for n in ("op2.ngc", "op10.ngc", "op1.ngc", "nonumber.ngc"):
             self.write(n, "x")
-        files = gseam.numbered_ngc_files(self.dir)
+        files, errors = gseam.numbered_ngc_files(self.dir)
+        self.assertEqual(errors, [])
         self.assertEqual([f.name for f in files],
                          ["op1.ngc", "op2.ngc", "op10.ngc"])
+
+    def test_pxofn_order_two_digit(self):
+        # alfabetisch zou P1,P10,P11,P2,... geven - numeriek moet het zijn
+        for i in range(1, 12):
+            self.write(f"job_P{i}of11.ngc", "x")
+        files, errors = gseam.numbered_ngc_files(self.dir)
+        self.assertEqual(errors, [])
+        self.assertEqual([f.name for f in files],
+                         [f"job_P{i}of11.ngc" for i in range(1, 12)])
+
+    def test_pxofn_missing_part_aborts(self):
+        for i in (1, 2, 4):
+            self.write(f"job_P{i}of4.ngc", "x")
+        files, errors = gseam.numbered_ngc_files(self.dir)
+        self.assertEqual(files, [])
+        self.assertTrue(any("missing" in e and "P3of4" in e for e in errors))
+
+    def test_pxofn_duplicate_part_aborts(self):
+        self.write("a_P1of2.ngc", "x")
+        self.write("b_P1of2.ngc", "x")
+        self.write("a_P2of2.ngc", "x")
+        files, errors = gseam.numbered_ngc_files(self.dir)
+        self.assertEqual(files, [])
+        self.assertTrue(any("duplicate" in e for e in errors))
+
+    def test_pxofn_mixed_naming_aborts(self):
+        self.write("job_P1of2.ngc", "x")
+        self.write("job_P2of2.ngc", "x")
+        self.write("los2.ngc", "x")
+        files, errors = gseam.numbered_ngc_files(self.dir)
+        self.assertEqual(files, [])
+        self.assertTrue(any("mixed naming" in e for e in errors))
 
     def test_read_tool_table(self):
         p = self.write("tool.tbl",

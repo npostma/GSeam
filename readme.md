@@ -12,7 +12,9 @@ Merges multiple CAM-exported `.ngc` files into one program with a single
 header/footer, or just validates files with `--check`.
 
 ```bash
-# merge all numbered .ngc files in a folder (sorted by trailing number)
+# merge all .ngc files in a folder - "..._P1of4.ngc" style names are ordered
+# by part number AND checked for completeness (a missing part aborts);
+# otherwise files are sorted by their trailing number (op1, op2, ...)
 python3 gseam.py operations/ merged.ngc
 
 # explicit order
@@ -27,6 +29,10 @@ python3 gseam.py --check op1.ngc op2.ngc
 
 ### Features
 
+- **Order safety in directory mode** — `PxofN` names (P1of4 ... P4of4)
+  are ordered by part number; the set must be complete and unmixed or the
+  merge aborts, so spot-drill-before-drill order can't silently break.
+  An explicit file list always wins.
 - **Structure-based parsing** — operations are found via their toolchange
   line plus the comment block above it. One header, one footer, no
   duplicated setup lines, no duplicate N numbers, single `M30`/`%`.
@@ -109,7 +115,7 @@ After writing, reload the tool table in LinuxCNC (or restart).
 python3 -m unittest discover tests        # -v for verbose
 ```
 
-38 self-contained tests (stdlib `unittest`, synthetic fixtures — no
+Self-contained tests (stdlib `unittest`, synthetic fixtures — no
 example files or machine needed).
 
 ---

@@ -335,13 +335,53 @@ def tool_check(parsed: list[ParsedFile], table: set[int]) -> list[str]:
 
 
 # ---------------------------------------------------------------- files/CLI
-def numbered_ngc_files(directory: Path) -> list[Path]:
+RE_PART_OF = re.compile(r"P(\d+)of(\d+)", re.IGNORECASE)
+
+
+def numbered_ngc_files(directory: Path) -> tuple[list[Path], list[str]]:
+    """Order the .ngc files in a directory; returns (files, errors).
+
+    Two naming schemes:
+      * "PxofN" (e.g. job_P2of4.ngc): ordered by part number x, and the set
+        must be COMPLETE (all 1..N exactly once) - a missing part aborts,
+        because merging without e.g. the spot-drill pass is dangerous.
+      * otherwise: sorted by the trailing number in the filename
+        (op1.ngc, op2.ngc, ...); files without a number are ignored.
+    Mixing both schemes in one directory is an error.
+    """
+    all_files = sorted(directory.glob("*.ngc"))
+    parts = [(p, RE_PART_OF.search(p.name)) for p in all_files]
+    matched = [(p, m) for p, m in parts if m]
+
+    if matched:
+        if len(matched) != len(all_files):
+            rest = [p.name for p, m in parts if not m]
+            return [], [f"mixed naming in {directory}: PxofN files together "
+                        f"with {rest} - order would be a guess, aborting"]
+        totals = {int(m.group(2)) for _, m in matched}
+        if len(totals) > 1:
+            return [], [f"PxofN sets with different totals in {directory}: "
+                        f"{sorted(totals)}"]
+        total = totals.pop()
+        index = {}
+        for p, m in matched:
+            i = int(m.group(1))
+            if i in index:
+                return [], [f"duplicate part P{i}of{total}: "
+                            f"{index[i].name} and {p.name}"]
+            index[i] = p
+        missing = [i for i in range(1, total + 1) if i not in index]
+        if missing:
+            return [], ["incomplete PxofN set: missing part(s) " +
+                        ", ".join(f"P{i}of{total}" for i in missing)]
+        return [index[i] for i in range(1, total + 1)], []
+
     def keynum(p: Path):
         m = re.search(r"(\d+)(?=\.ngc$)", p.name, re.IGNORECASE)
         return int(m.group(1)) if m else None
-    files = [(keynum(p), p) for p in sorted(directory.glob("*.ngc"))]
+    files = [(keynum(p), p) for p in all_files]
     return [p for k, p in sorted((f for f in files if f[0] is not None),
-                                 key=lambda f: f[0])]
+                                 key=lambda f: f[0])], []
 
 
 def main(argv=None) -> int:
@@ -385,7 +425,11 @@ def main(argv=None) -> int:
     for a in in_args:
         p = Path(a)
         if p.is_dir():
-            found = numbered_ngc_files(p)
+            found, order_errors = numbered_ngc_files(p)
+            for e in order_errors:
+                say(f"ERROR: {e}")
+            if order_errors:
+                return 2
             if not found:
                 say(f"ERROR: no numbered .ngc files in {p}")
                 return 2
