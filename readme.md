@@ -51,6 +51,17 @@ python3 gseam.py --check op1.ngc op2.ngc
   operation/tool comments are kept (`--keep-all-comments` keeps all).
 - Renumbering with a single sequence (`--step`, `--no-renumber`); O-word
   lines are never numbered.
+- **Spot-coverage check** — with both spot-drill and drill operations
+  (classified via the tool.tbl descriptions), every drilled XY must have
+  been spot-drilled first: warning, or error under `--secure`.
+- **`--secure`** — reads machine limits from a LinuxCNC `.ini` and the
+  current G54 offset + rotation from `linuxcnc.var` (`--ini`/`--var`,
+  auto-detected next to the tool table) and fails if the program would
+  leave the machine envelope.
+- **Job card** — the merged file starts with `(JOB:)`/`(OP:)` comments:
+  per tool description, hole count, Zmin and a rough time estimate.
+- **`--preview`** — top-down SVG next to the output (`--preview-file PATH`):
+  holes at true tool diameter, one colour per tool, feed paths, legend.
 - Non-zero exit code on validation errors — safe for shell pipelines.
 - `--dry-run` shows the plan and report without writing.
 

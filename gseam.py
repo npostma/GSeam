@@ -212,13 +212,285 @@ def parse_file(path: Path, allow_inch: bool) -> ParsedFile:
     return pf
 
 
-# ---------------------------------------------------------------- tool table
-def read_tool_table(path: Path) -> set[int]:
-    tools = set()
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = re.match(r"\s*T(\d+)\b", line)
+# ---------------------------------------------------------------- analysis
+RE_GWORD = re.compile(r"\bG(\d+(?:\.\d)?)\b", re.IGNORECASE)
+RE_AXWORD = re.compile(r"\b([XYZF])\s*([-+]?\d*\.?\d+)", re.IGNORECASE)
+RAPID_MMPM = 5000.0   # aanname voor de tijdschatting van rapids
+
+
+class OpAnalysis:
+    """Per-operation: drilled holes, extents, rough time, XY feed paths."""
+
+    def __init__(self, tool: int | None):
+        self.tool = tool
+        self.holes: set[tuple[float, float]] = set()
+        self.zmin: float | None = None
+        self.feed_minutes = 0.0
+        self.rapid_mm = 0.0
+        self.segments: list[tuple] = []   # (x0,y0,x1,y1) feed-XY-segmenten
+
+
+def analyze_op(op: Operation) -> OpAnalysis:
+    an = OpAnalysis(op.tool)
+    x = y = z = None
+    feed = None
+    motion = None          # 'G0' / 'G1' (G2/G3 tellen als feed)
+    canned = False
+    for line in op.lines:
+        s = line.strip()
+        if not s or is_comment(s):
+            continue
+        if RE_G53.search(s):
+            x = y = z = None   # machine-coords beweging: positie onbekend
+            continue
+        gcodes = ["G" + g for g in RE_GWORD.findall(s)]
+        if any(g in ("G81", "G82", "G83", "G73", "G85") for g in gcodes):
+            canned = True
+        if "G80" in gcodes:
+            canned = False
+        for g in gcodes:
+            if g == "G0":
+                motion = "G0"
+            elif g in ("G1", "G2", "G3"):
+                motion = "G1"
+        words = {a.upper(): float(v) for a, v in RE_AXWORD.findall(s)}
+        if "F" in words:
+            feed = words["F"]
+        nx = words.get("X", x)
+        ny = words.get("Y", y)
+        nz = words.get("Z", z)
+        has_xy = "X" in words or "Y" in words
+        has_z = "Z" in words
+
+        # gat-detectie
+        if canned and (has_xy or any(g.startswith("G8") and g != "G80"
+                                     for g in gcodes)):
+            if nx is not None and ny is not None:
+                an.holes.add((round(nx, 2), round(ny, 2)))
+        elif (motion == "G1" and has_z and not has_xy
+                and words["Z"] < 0 and x is not None and y is not None):
+            an.holes.add((round(x, 2), round(y, 2)))
+
+        # zmin (canned: Z-woord is de bodem)
+        if has_z and nz is not None and nz < (an.zmin if an.zmin is not None
+                                              else 1e9):
+            an.zmin = nz
+        # afstand/tijd + feed-paden
+        if motion in ("G0", "G1") and None not in (x, y, z, nx, ny, nz) \
+                and not canned:
+            dist = ((nx - x) ** 2 + (ny - y) ** 2 + (nz - z) ** 2) ** 0.5
+            if motion == "G0":
+                an.rapid_mm += dist
+            elif feed:
+                an.feed_minutes += dist / feed
+                if has_xy and (nx, ny) != (x, y):
+                    an.segments.append((x, y, nx, ny))
+        elif canned and None not in (x, y, nx, ny):
+            an.rapid_mm += ((nx - x) ** 2 + (ny - y) ** 2) ** 0.5
+        x, y, z = nx, ny, nz
+    return an
+
+
+def tool_kind(tool: int | None, table: dict[int, dict]) -> str:
+    desc = table.get(tool, {}).get("desc", "").lower()
+    if "spot" in desc:
+        return "spot"
+    if "drill" in desc or "boor" in desc:
+        return "drill"
+    return "other"
+
+
+def spot_coverage(op_infos: list[tuple], table: dict[int, dict]) -> list[str]:
+    """op_infos: [(filename, op, analysis)]. Controleert dat elk boorgat
+    eerst gespot is. Alleen actief als er spot- EN boor-operaties zijn."""
+    spots: set = set()
+    drills = []
+    for name, op, an in op_infos:
+        kind = tool_kind(op.tool, table)
+        if kind == "spot":
+            spots |= an.holes
+        elif kind == "drill":
+            drills.append((name, op, an))
+    if not spots or not drills:
+        return []
+    problems = []
+    for name, op, an in drills:
+        missing = sorted(an.holes - spots)
+        if missing:
+            shown = ", ".join(f"({mx:g},{my:g})" for mx, my in missing[:6])
+            more = f" (+{len(missing) - 6})" if len(missing) > 6 else ""
+            problems.append(f"{name}: T{op.tool} boort {len(missing)} "
+                            f"gat(en) dat NIET gespot is: {shown}{more}")
+    return problems
+
+
+# ---------------------------------------------------------------- --secure
+def read_ini_limits(ini: Path) -> dict[str, tuple[float, float]]:
+    limits, section = {}, None
+    for line in ini.read_text(encoding="utf-8",
+                              errors="replace").splitlines():
+        s = line.strip()
+        m = re.match(r"\[([A-Z_0-9]+)\]", s)
         if m:
-            tools.add(int(m.group(1)))
+            section = m.group(1)
+            continue
+        m = re.match(r"(MIN_LIMIT|MAX_LIMIT)\s*=\s*([-+0-9.]+)", s)
+        if m and section in ("AXIS_X", "AXIS_Y", "AXIS_Z"):
+            ax = section[-1]
+            lo, hi = limits.get(ax, (None, None))
+            if m.group(1) == "MIN_LIMIT":
+                lo = float(m.group(2))
+            else:
+                hi = float(m.group(2))
+            limits[ax] = (lo, hi)
+    return {a: v for a, v in limits.items() if None not in v}
+
+
+def read_var_g54(var: Path) -> dict[str, float]:
+    vals = {}
+    want = {"5221": "X", "5222": "Y", "5223": "Z", "5230": "R"}
+    for line in var.read_text(encoding="utf-8",
+                              errors="replace").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] in want:
+            vals[want[parts[0]]] = float(parts[1])
+    return vals
+
+
+def secure_check(ext: "Extents", limits: dict, g54: dict) -> list[str]:
+    """Werk-extents + G54 (incl. rotatie) vs machine-limieten."""
+    import math
+    problems = []
+    if not all(a in ext.mins for a in "XY"):
+        return ["--secure: geen XY-bewegingen gevonden om te controleren"]
+    r = math.radians(g54.get("R", 0.0))
+    c, s = math.cos(r), math.sin(r)
+    xs, ys = [], []
+    for wx in (ext.mins["X"], ext.maxs["X"]):
+        for wy in (ext.mins["Y"], ext.maxs["Y"]):
+            xs.append(g54.get("X", 0) + wx * c - wy * s)
+            ys.append(g54.get("Y", 0) + wx * s + wy * c)
+    ranges = {"X": (min(xs), max(xs)), "Y": (min(ys), max(ys))}
+    if "Z" in ext.mins:
+        zo = g54.get("Z", 0)
+        ranges["Z"] = (ext.mins["Z"] + zo, ext.maxs["Z"] + zo)
+    for ax, (lo, hi) in ranges.items():
+        if ax not in limits:
+            problems.append(f"--secure: geen limieten voor {ax}-as gevonden")
+            continue
+        mn, mx = limits[ax]
+        if lo < mn - 1e-6:
+            problems.append(f"{ax} onderschrijdt machine-limiet: "
+                            f"{lo:.1f} < {mn:.1f} (machine-coords)")
+        if hi > mx + 1e-6:
+            problems.append(f"{ax} overschrijdt machine-limiet: "
+                            f"{hi:.1f} > {mx:.1f} (machine-coords)")
+    return problems
+
+
+# ---------------------------------------------------------------- job card
+def job_card(op_infos: list[tuple], table: dict[int, dict]) -> list[str]:
+    lines = []
+    total = 0.0
+    for name, op, an in op_infos:
+        mins = an.feed_minutes + an.rapid_mm / RAPID_MMPM
+        total += mins
+        desc = table.get(op.tool, {}).get("desc", "")
+        desc = re.sub(r"[()]", "", desc)[:40].strip()
+        bits = [f"T{op.tool}"]
+        if desc:
+            bits.append(desc)
+        if an.holes:
+            bits.append(f"{len(an.holes)} gaten")
+        if an.zmin is not None:
+            bits.append(f"Zmin {an.zmin:g}")
+        bits.append(f"~{max(1, round(mins))} min")
+        lines.append("(OP: " + " - ".join(bits) + ")")
+    lines.insert(0, f"(JOB: {len(op_infos)} operaties, "
+                    f"~{max(1, round(total))} min excl. toolwissels)")
+    return lines
+
+
+# ---------------------------------------------------------------- SVG preview
+_SVG_COLORS = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4",
+               "#42d4f4", "#f032e6", "#9a6324"]
+
+
+def write_svg(path: Path, op_infos: list[tuple], table: dict[int, dict],
+              ext: "Extents"):
+    if "X" not in ext.mins or "Y" not in ext.mins:
+        return False
+    pad = 10.0
+    x0, x1 = ext.mins["X"] - pad, ext.maxs["X"] + pad
+    y0, y1 = ext.mins["Y"] - pad, ext.maxs["Y"] + pad
+    w, h = x1 - x0, y1 - y0
+    scale = 900.0 / max(w, h)
+    W, H = w * scale, h * scale
+    legend_h = 22 * (len({op.tool for _, op, _ in op_infos}) + 1)
+
+    def sx(x):
+        return (x - x0) * scale
+
+    def sy(y):
+        return H - (y - y0) * scale   # machine-Y omhoog
+
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" '
+             f'width="{W:.0f}" height="{H + legend_h:.0f}" '
+             f'viewBox="0 0 {W:.0f} {H + legend_h:.0f}">',
+             f'<rect x="0" y="0" width="{W:.0f}" height="{H:.0f}" '
+             f'fill="#fafafa" stroke="#999"/>']
+    # werk-nulpunt
+    if x0 < 0 < x1 and y0 < 0 < y1:
+        parts.append(f'<path d="M {sx(0):.1f} {sy(0) - 8:.1f} v 16 '
+                     f'M {sx(0) - 8:.1f} {sy(0):.1f} h 16" '
+                     f'stroke="#000" stroke-width="1"/>')
+    color_of = {}
+    for name, op, an in op_infos:
+        col = color_of.setdefault(
+            op.tool, _SVG_COLORS[len(color_of) % len(_SVG_COLORS)])
+        for (ax, ay, bx, by) in an.segments:
+            parts.append(f'<line x1="{sx(ax):.1f}" y1="{sy(ay):.1f}" '
+                         f'x2="{sx(bx):.1f}" y2="{sy(by):.1f}" '
+                         f'stroke="{col}" stroke-width="1" opacity="0.6"/>')
+        rad = max(table.get(op.tool, {}).get("diam", 2.0) / 2.0, 0.5)
+        for (hx, hy) in sorted(an.holes):
+            parts.append(f'<circle cx="{sx(hx):.1f}" cy="{sy(hy):.1f}" '
+                         f'r="{rad * scale:.1f}" fill="none" '
+                         f'stroke="{col}" stroke-width="1.5"/>')
+    ly = H + 16
+    parts.append(f'<text x="4" y="{ly:.0f}" font-size="12" '
+                 f'font-family="monospace">X {ext.mins["X"]:g}..'
+                 f'{ext.maxs["X"]:g}  Y {ext.mins["Y"]:g}..'
+                 f'{ext.maxs["Y"]:g} mm</text>')
+    for tool, col in color_of.items():
+        ly += 22
+        desc = re.sub(r"[()<>&]", "", table.get(tool, {}).get("desc", ""))
+        holes = sum(len(an.holes) for _, op, an in op_infos
+                    if op.tool == tool)
+        parts.append(f'<circle cx="10" cy="{ly - 4:.0f}" r="6" fill="none" '
+                     f'stroke="{col}" stroke-width="2"/>')
+        parts.append(f'<text x="22" y="{ly:.0f}" font-size="12" '
+                     f'font-family="monospace">T{tool} {desc[:48]} '
+                     f'({holes} gaten)</text>')
+    parts.append("</svg>")
+    path.write_text("\n".join(parts) + "\n", encoding="utf-8")
+    return True
+
+
+# ---------------------------------------------------------------- tool table
+def read_tool_table(path: Path) -> dict[int, dict]:
+    """T-number -> {'diam': float, 'desc': str} from a tool.tbl."""
+    tools: dict[int, dict] = {}
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        m = re.match(r"\s*T\s*(\d+)\b", line)
+        if not m:
+            continue
+        dm = re.search(r"\bD\s*([-+]?[\d.]+)", line)
+        cm = re.search(r";\s*(.+)$", line)
+        tools[int(m.group(1))] = {
+            "diam": float(dm.group(1)) if dm else 0.0,
+            "desc": cm.group(1).strip() if cm else "",
+        }
     return tools
 
 
@@ -240,7 +512,8 @@ def comment_filter(line: str, keep_all: bool) -> bool:
 
 def merge(parsed: list[ParsedFile], out_name: str, *,
           insert_toolchange_call: bool, skip_same_tool: bool,
-          keep_all_comments: bool) -> tuple[list[str], dict]:
+          keep_all_comments: bool, jobcard: list[str] | None = None
+          ) -> tuple[list[str], dict]:
     """Return (lines-without-N-numbers, stats)."""
     stats = {"toolchanges": 0, "toolchange_calls": 0, "skipped_toolchanges": 0,
              "comments_kept": 0, "comments_removed": 0}
@@ -249,6 +522,7 @@ def merge(parsed: list[ParsedFile], out_name: str, *,
     out.append(f"({Path(out_name).stem.upper()} - merged by gseam)")
     out.append(f"(source: {', '.join(p.path.name for p in parsed)})")
     out.append(f"(generated: {datetime.now().isoformat(timespec='seconds')})")
+    out.extend(jobcard or [])
 
     # collect unique tool-doc comments from all files, in order
     seen = set()
@@ -327,10 +601,10 @@ def cross_file_checks(parsed: list[ParsedFile]) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
-def tool_check(parsed: list[ParsedFile], table: set[int]) -> list[str]:
+def tool_check(parsed: list[ParsedFile], table: dict[int, dict]) -> list[str]:
     used = {op.tool for pf in parsed for op in pf.operations
             if op.tool is not None}
-    missing = sorted(used - table)
+    missing = sorted(used - set(table))
     return [f"tool T{t} not in tool table" for t in missing]
 
 
@@ -402,6 +676,19 @@ def main(argv=None) -> int:
     ap.add_argument("--allow-inch", action="store_true")
     ap.add_argument("--tool-table", type=Path)
     ap.add_argument("--no-tool-check", action="store_true")
+    ap.add_argument("--secure", action="store_true",
+                    help="controleer extents + actuele G54 tegen de "
+                         "machine-limieten uit de .ini; spot-dekking wordt "
+                         "dan ook een fout i.p.v. waarschuwing")
+    ap.add_argument("--ini", type=Path,
+                    help="pad naar de LinuxCNC .ini (default: auto)")
+    ap.add_argument("--var", type=Path,
+                    help="pad naar linuxcnc.var (default: auto)")
+    ap.add_argument("--preview", action="store_true",
+                    help="schrijf een top-down SVG-preview naast de output")
+    ap.add_argument("--preview-file", type=Path, metavar="SVG",
+                    help="eigen pad voor de SVG-preview (impliceert "
+                         "--preview)")
     ap.add_argument("--log", type=Path)
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args(argv)
@@ -455,26 +742,65 @@ def main(argv=None) -> int:
     warnings += xw
 
     # tool table check
+    table: dict[int, dict] = {}
+    table_path = args.tool_table or find_default_tool_table(Path(__file__))
     if not args.no_tool_check:
-        table_path = args.tool_table or find_default_tool_table(Path(__file__))
         if table_path and table_path.is_file():
             say(f"tool table: {table_path}")
-            errors += tool_check(parsed, read_tool_table(table_path))
+            table = read_tool_table(table_path)
+            errors += tool_check(parsed, table)
         elif args.tool_table:
             errors.append(f"tool table {args.tool_table} not found")
         else:
             warnings.append("no tool.tbl found - tool check skipped")
 
-    # extents
+    # extents + per-operatie analyse (gaten, tijden, paden)
     ext = Extents()
+    op_infos = []
     for pf in parsed:
         for op in pf.operations:
             for line in op.lines:
                 if not is_comment(line):
                     ext.feed(line, op.tool)
+            op_infos.append((pf.path.name, op, analyze_op(op)))
     say("extents (work coords, endpoint-based):")
     for line in ext.report():
         say(line)
+
+    # spot-voor-boor dekking (alleen als er spot- EN boor-operaties zijn)
+    coverage = spot_coverage(op_infos, table)
+    if coverage:
+        if args.secure:
+            errors += coverage
+        else:
+            warnings += coverage
+    elif table and any(tool_kind(op.tool, table) == "spot"
+                       for _, op, _ in op_infos):
+        say("spot-dekking: alle boorgaten zijn eerst gespot")
+
+    # --secure: machine-limieten vs extents + actuele G54
+    if args.secure:
+        cfg_dir = (table_path.parent if table_path and table_path.is_file()
+                   else Path(__file__).resolve().parent.parent)
+        ini = args.ini or next(iter(sorted(cfg_dir.glob("*.ini"))), None)
+        var = args.var or (cfg_dir / "linuxcnc.var")
+        if not ini or not Path(ini).is_file():
+            errors.append("--secure: geen .ini gevonden (geef --ini op)")
+        elif not Path(var).is_file():
+            errors.append("--secure: geen linuxcnc.var gevonden "
+                          "(geef --var op)")
+        else:
+            limits = read_ini_limits(Path(ini))
+            g54 = read_var_g54(Path(var))
+            say(f"secure: limieten uit {Path(ini).name}, G54 uit "
+                f"{Path(var).name} (X{g54.get('X', 0):.1f} "
+                f"Y{g54.get('Y', 0):.1f} Z{g54.get('Z', 0):.1f} "
+                f"R{g54.get('R', 0):.2f})")
+            problems = secure_check(ext, limits, g54)
+            if problems:
+                errors += problems
+            else:
+                say("secure: programma past binnen de machine-limieten")
 
     for w in warnings:
         say(f"WARNING: {w}")
@@ -495,11 +821,16 @@ def main(argv=None) -> int:
         _write_log(args.log, report)
         return 0
 
+    card = job_card(op_infos, table)
+    for line in card:
+        say(line)
+
     merged, stats = merge(
         parsed, out_path.name,
         insert_toolchange_call=args.insert_toolchange_call,
         skip_same_tool=not args.keep_duplicate_toolchanges,
-        keep_all_comments=args.keep_all_comments)
+        keep_all_comments=args.keep_all_comments,
+        jobcard=card)
 
     body = merged if args.no_renumber else renumber(merged, args.step)
     out_lines = ["%"] + body + ["%"]
@@ -520,6 +851,14 @@ def main(argv=None) -> int:
 
     out_path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
     say(f"written: {out_path}")
+
+    if args.preview or args.preview_file:
+        svg = args.preview_file or out_path.with_suffix(".svg")
+        if write_svg(svg, op_infos, table, ext):
+            say(f"preview: {svg}")
+        else:
+            say("preview: geen XY-data om te tekenen")
+
     _write_log(args.log, report)
     return 0
 

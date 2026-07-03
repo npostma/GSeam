@@ -250,9 +250,131 @@ class TestFilesAndTable(TempDirTest):
 
     def test_read_tool_table(self):
         p = self.write("tool.tbl",
-                       "; kop\nT1 P1 D+3.000 Z+0.000 ; x\n"
+                       "; kop\nT1 P1 D+3.000 Z+0.000 ; spot drill 90\n"
                        "T40  P40  D+6.000  Z-1.200\n")
-        self.assertEqual(gseam.read_tool_table(p), {1, 40})
+        t = gseam.read_tool_table(p)
+        self.assertEqual(set(t), {1, 40})
+        self.assertEqual(t[1]["diam"], 3.0)
+        self.assertEqual(t[1]["desc"], "spot drill 90")
+        self.assertEqual(t[40]["diam"], 6.0)
+
+
+SPOT_TABLE = {5: {"diam": 10.0, "desc": "spot drill - 10mm"},
+              4: {"diam": 5.0, "desc": "drill - 5mm"},
+              3: {"diam": 6.0, "desc": "flat end mill"}}
+
+
+def op_from(lines, tool):
+    return gseam.Operation(tool, lines)
+
+
+class TestAnalysis(unittest.TestCase):
+    def test_canned_cycle_holes(self):
+        op = op_from(["T5 M6", "G0 X10. Y20.",
+                      "G98 G81 X10. Y20. Z-1.5 R5. F333.",
+                      "Y30.", "X15.", "G80", "G0 Z15."], 5)
+        an = gseam.analyze_op(op)
+        self.assertEqual(an.holes, {(10.0, 20.0), (10.0, 30.0),
+                                    (15.0, 30.0)})
+        self.assertEqual(an.zmin, -1.5)
+
+    def test_peck_drill_holes_dedup(self):
+        op = op_from(["T4 M6", "G0 X10. Y20.", "G0 Z5.",
+                      "G1 Z-5. F1000.", "G0 Z-4.9", "G1 Z-10. F1000.",
+                      "G0 Z5.", "X30.", "G1 Z-10. F1000."], 4)
+        an = gseam.analyze_op(op)
+        self.assertEqual(an.holes, {(10.0, 20.0), (30.0, 20.0)})
+        self.assertEqual(an.zmin, -10.0)
+
+    def test_milling_is_not_a_hole(self):
+        op = op_from(["T3 M6", "G0 X0. Y0.", "G0 Z5.",
+                      "G1 X10. Y10. Z-2. F500."], 3)
+        an = gseam.analyze_op(op)
+        self.assertEqual(an.holes, set())
+
+    def test_spot_coverage_ok_and_missing(self):
+        spot = op_from(["T5 M6", "G81 X10. Y10. Z-1. R5. F300",
+                        "X20.", "G80"], 5)
+        drill_ok = op_from(["T4 M6", "G0 X10. Y10.",
+                            "G1 Z-5. F1000."], 4)
+        drill_bad = op_from(["T4 M6", "G0 X99. Y99.",
+                             "G1 Z-5. F1000."], 4)
+        infos = [("s.ngc", spot, gseam.analyze_op(spot)),
+                 ("ok.ngc", drill_ok, gseam.analyze_op(drill_ok))]
+        self.assertEqual(gseam.spot_coverage(infos, SPOT_TABLE), [])
+        infos.append(("bad.ngc", drill_bad, gseam.analyze_op(drill_bad)))
+        problems = gseam.spot_coverage(infos, SPOT_TABLE)
+        self.assertEqual(len(problems), 1)
+        self.assertIn("(99,99)", problems[0])
+
+    def test_job_card(self):
+        op = op_from(["T4 M6", "G0 X0. Y0.", "G0 Z5.",
+                      "G1 Z-5. F1000.", "G0 Z5.", "X100.",
+                      "G1 Z-5. F1000."], 4)
+        card = gseam.job_card([("f.ngc", op, gseam.analyze_op(op))],
+                              SPOT_TABLE)
+        self.assertTrue(card[0].startswith("(JOB:"))
+        self.assertIn("T4", card[1])
+        self.assertIn("2 gaten", card[1])
+
+
+class TestSecure(TempDirTest):
+    def _ini(self):
+        return self.write("m.ini", "[AXIS_X]\nMIN_LIMIT = 0\n"
+                          "MAX_LIMIT = 1445\n[AXIS_Y]\nMIN_LIMIT = 0\n"
+                          "MAX_LIMIT = 570\n[AXIS_Z]\nMIN_LIMIT = -475\n"
+                          "MAX_LIMIT = 0.1\n")
+
+    def test_limits_and_g54_parsing(self):
+        limits = gseam.read_ini_limits(self._ini())
+        self.assertEqual(limits["X"], (0.0, 1445.0))
+        var = self.write("linuxcnc.var",
+                         "5221 500.0\n5222 100.0\n5223 -90.0\n5230 0.0\n")
+        g54 = gseam.read_var_g54(var)
+        self.assertEqual(g54["X"], 500.0)
+        self.assertEqual(g54["Z"], -90.0)
+
+    def _ext(self, x0, x1, y0, y1, z0, z1):
+        e = gseam.Extents()
+        e.mins = {"X": x0, "Y": y0, "Z": z0}
+        e.maxs = {"X": x1, "Y": y1, "Z": z1}
+        return e
+
+    def test_fits(self):
+        limits = gseam.read_ini_limits(self._ini())
+        g54 = {"X": 500.0, "Y": 100.0, "Z": -90.0, "R": 0.0}
+        ext = self._ext(0, 180, 0, 320, -25, 15)
+        self.assertEqual(gseam.secure_check(ext, limits, g54), [])
+
+    def test_exceeds_y(self):
+        limits = gseam.read_ini_limits(self._ini())
+        g54 = {"X": 500.0, "Y": 400.0, "Z": -90.0, "R": 0.0}
+        ext = self._ext(0, 180, 0, 320, -25, 15)
+        problems = gseam.secure_check(ext, limits, g54)
+        self.assertTrue(any("Y overschrijdt" in p for p in problems))
+
+    def test_rotation_shifts_extents(self):
+        limits = gseam.read_ini_limits(self._ini())
+        # 90 graden: werk-X wordt machine-Y -> X-bereik 0..600 past niet in Y
+        g54 = {"X": 100.0, "Y": 10.0, "Z": -90.0, "R": 90.0}
+        ext = self._ext(0, 600, 0, 10, -5, 5)
+        problems = gseam.secure_check(ext, limits, g54)
+        self.assertTrue(any("Y overschrijdt" in p for p in problems))
+
+
+class TestSvg(TempDirTest):
+    def test_svg_written(self):
+        op = op_from(["T5 M6", "G81 X10. Y10. Z-1. R5. F300",
+                      "X20.", "G80"], 5)
+        infos = [("f.ngc", op, gseam.analyze_op(op))]
+        ext = gseam.Extents()
+        ext.mins, ext.maxs = {"X": 10, "Y": 10}, {"X": 20, "Y": 10}
+        svg = self.dir / "p.svg"
+        self.assertTrue(gseam.write_svg(svg, infos, SPOT_TABLE, ext))
+        content = svg.read_text()
+        self.assertIn("<svg", content)
+        self.assertIn("<circle", content)
+        self.assertIn("T5", content)
 
 
 class TestMainEndToEnd(TempDirTest):
