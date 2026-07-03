@@ -1,10 +1,10 @@
 %
 (OUTPUT_NO_OPTIONS - merged by gseam)
 (source: Simple1.ngc, Simple2.ngc)
-(generated: 2026-07-03T10:38:23)
-(JOB: 2 operaties, ~2 min excl. toolwissels)
+(generated: 2026-07-03T14:40:27)
+(JOB: 2 operations, ~2 min excl. toolchanges)
 (OP: T3 - Zmin -7.5 - ~2 min)
-(OP: T3 - 1 gaten - Zmin -10 - ~1 min)
+(OP: T3 - 1 holes - Zmin -10 - ~1 min)
 (T3 D=3. CR=0. - ZMIN=-7.5 - FLAT END MILL)
 (T3 D=3. CR=0. - ZMIN=-10. - FLAT END MILL)
 N10 G90 G94 G17 G91.1

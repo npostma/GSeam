@@ -241,5 +241,5 @@
 <circle cx="448.8" cy="821.0" r="7.9" fill="none" stroke="#e6194b" stroke-width="1.5"/>
 <text x="4" y="916" font-size="12" font-family="monospace">X -0.5..92.5  Y -1.4..92.5 mm</text>
 <circle cx="10" cy="934" r="6" fill="none" stroke="#e6194b" stroke-width="2"/>
-<text x="22" y="938" font-size="12" font-family="monospace">T3  (1 gaten)</text>
+<text x="22" y="938" font-size="12" font-family="monospace">T3  (1 holes)</text>
 </svg>
