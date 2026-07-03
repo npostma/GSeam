@@ -1,51 +1,62 @@
-; toolchange.ngc - veilige toolwissel MET automatische vergelijkende
-; tool-lengte op de vaste toolsensor (aparte sensor, positie in de INI).
+; toolchange.ngc - safe toolchange WITH automatic comparative tool-length
+; measurement on a fixed tool sensor (position configured in the INI).
 ;
-; Werkt op twee manieren:
-;   - via REMAP=M6 in de INI (aanbevolen): elke "Tn M6" in G-code komt hier
+; Works two ways:
+;   - via REMAP=M6 in the INI (recommended): every "Tn M6" ends up here
 ;   - via "O <toolchange> call" (gseam --insert-toolchange-call)
 ;
-; Het idee (vergelijkend, geen absolute kalibratie nodig - collet-uitsteek
-; mag elke wissel anders zijn):
-;   1) meet de HUIDIGE tool op de sensor -> referentie werk-Z
-;   2) parkeer hoog, M0: wissel de tool, cycle start
-;   3) meet de NIEUWE tool op de sensor
-;   4) schuif G54-Z zodat de nieuwe tool dezelfde werk-Z heeft (G10 L20)
+; The idea (comparative - no absolute calibration needed, collet stickout
+; may differ on every change):
+;   1) measure the CURRENT tool on the sensor -> reference work-Z
+;   2) park high, M0: swap the tool, cycle start
+;   3) measure the NEW tool on the sensor
+;   4) shift G54-Z so the new tool has the same work-Z (G10 L20)
 ;
-; VEREIST eenmalig: sensor monteren op vaste plek + [TOOLSENSOR] in de INI
-; invullen (machinecoordinaten G53!) + de sensor-ingang in HAL bij het
-; probe-signaal OR-en. Zolang X en Y allebei 0 zijn valt de routine terug
-; op het oude gedrag: parkeren + M0, zonder meting.
+; ONE-TIME setup: mount the sensor at a fixed spot, fill [TOOLSENSOR] in
+; the INI (MACHINE coordinates, G53!) and OR the sensor input into the
+; probe signal in HAL. While X and Y are both 0 the routine falls back to
+; the old behaviour: park + M0, without measuring.
+;
+; Example INI section:
+;   [TOOLSENSOR]
+;   X = 18
+;   Y = 565
+;   PROBE_START_Z = -250     ; G53-Z where the downward search starts.
+;                            ; MUST clear the trigger point of your
+;                            ; LONGEST tool - the move here is a rapid!
+;   MAX_DEPTH = 220          ; max search stroke down, mm
+;   FAST_F = 400             ; search feed = speed of the first touch
+;   SLOW_F = 10              ; re-measure feed, defines the accuracy
 
 O<toolchange> sub
 
-  #<sx>     = #<_ini[TOOLSENSOR]X>          ; sensorpositie, G53 machine-mm
+  #<sx>     = #<_ini[TOOLSENSOR]X>          ; sensor position, G53 machine-mm
   #<sy>     = #<_ini[TOOLSENSOR]Y>
-  #<zstart> = #<_ini[TOOLSENSOR]PROBE_START_Z>  ; G53-Z waar de probe begint
-  #<zdepth> = #<_ini[TOOLSENSOR]MAX_DEPTH>      ; max zoekslag omlaag, mm
+  #<zstart> = #<_ini[TOOLSENSOR]PROBE_START_Z>  ; G53-Z where probing starts
+  #<zdepth> = #<_ini[TOOLSENSOR]MAX_DEPTH>      ; max search stroke down, mm
   #<f_fast> = #<_ini[TOOLSENSOR]FAST_F>
   #<f_slow> = #<_ini[TOOLSENSOR]SLOW_F>
 
-  ; zoekslag begrenzen tot 1mm boven de Z-soft-limit: een probe-beweging
-  ; waarvan het EINDPUNT buiten de limieten ligt weigert LinuxCNC vooraf
-  ; (dan blijft hij op starthoogte hangen - gezien op de machine 2026-07-03)
+  ; clamp the stroke to 1mm above the Z soft limit: LinuxCNC refuses a
+  ; probe move whose ENDPOINT lies outside the limits up front (the
+  ; routine would just stall at start height)
   #<zroom> = [#<zstart> - #<_ini[AXIS_Z]MIN_LIMIT> - 1]
   O105 IF [#<zdepth> GT #<zroom>]
     #<zdepth> = #<zroom>
   O105 ENDIF
 
-  ; historie-log: APPEND zodat je altijd kunt terugzien wat er gebeurd is
+  ; history log: APPEND so you can always see afterwards what happened
   (LOGAPPEND,toolchange.log)
-  (LOG, ==== toolwissel: van T#<_current_tool> naar T#<_selected_tool> ====)
+  (LOG, ==== toolchange: from T#<_current_tool> to T#<_selected_tool> ====)
 
-  ; ===== sensor nog niet geconfigureerd -> klassiek gedrag =====
+  ; ===== sensor not configured yet -> classic behaviour =====
   O100 IF [[#<sx> EQ 0] AND [#<sy> EQ 0]]
-    (LOG, sensor niet geconfigureerd - wissel ZONDER meting)
+    (LOG, sensor not configured - change WITHOUT measurement)
     (LOGCLOSE)
     G90
     G53 G0 Z0
     G53 G0 X0 Y0
-    (MSG, Wissel de tool. LET OP: geen lengtemeting - sensor niet geconfigureerd)
+    (MSG, Change the tool. NOTE: no length measurement - sensor not configured)
     M0
     O110 IF [#<_selected_tool> GE 0]
       M61 Q#<_selected_tool>
@@ -53,7 +64,7 @@ O<toolchange> sub
     O<toolchange> return
   O100 ENDIF
 
-  ; ===== 1: referentie - huidige tool op de sensor =====
+  ; ===== 1: reference - current tool on the sensor =====
   G90
   G21
   G53 G0 Z0
@@ -66,9 +77,9 @@ O<toolchange> sub
     G90
     #<zstop> = #<_abs_z>
     G53 G0 Z0
-    (LOG, FOUT: toolsensor niet geraakt bij referentie - gestopt op machine-Z #<zstop>)
+    (LOG, ERROR: tool sensor not reached for the reference - stopped at machine-Z #<zstop>)
     (LOGCLOSE)
-    (MSG, Toolsensor NIET geraakt bij referentie - GEEN meting! Druk ESCAPE om af te breken)
+    (MSG, Tool sensor NOT reached for the reference - NO measurement! Press ESCAPE to abort)
     M0
     O<toolchange> return
   O120 ENDIF
@@ -78,29 +89,28 @@ O<toolchange> sub
   O121 IF [#5070 EQ 0]
     G90
     G53 G0 Z0
-    (LOG, FOUT: toolsensor kwijt bij nameten referentie - afgebroken)
+    (LOG, ERROR: tool sensor lost during reference re-measure - aborted)
     (LOGCLOSE)
-    (MSG, Toolsensor kwijt bij nameten referentie - druk ESCAPE om af te breken)
+    (MSG, Tool sensor lost during reference re-measure - press ESCAPE to abort)
     M0
     O<toolchange> return
   O121 ENDIF
   G90
-  #<zref> = #5063                 ; werk-Z van de sensor met de HUIDIGE tool
-  M68 E12 Q[#<zref>]              ; -> paneel "Sensor Z"
-  (LOG, referentie T#<_current_tool>: sensor werk-Z = #<zref>)
+  #<zref> = #5063                 ; sensor work-Z with the CURRENT tool
+  (LOG, reference T#<_current_tool>: sensor work-Z = #<zref>)
 
-  ; ===== 2: wisselen =====
+  ; ===== 2: swap =====
   G53 G0 Z0
-  ; toon het DOEL-toolnummer als dat bekend is (via T-prefetch of REMAP);
-  ; DEBUG expandeert parameters, MSG niet
+  ; show the TARGET tool number when it is known (via Tn prefetch or REMAP);
+  ; DEBUG expands parameters, MSG does not
   O150 IF [[#<_selected_tool> GT 0] AND [#<_selected_tool> NE #<_current_tool>]]
-    (DEBUG, WISSEL naar tool T#<_selected_tool> en druk cycle start)
+    (DEBUG, CHANGE to tool T#<_selected_tool> and press cycle start)
   O150 ELSE
-    (MSG, Wissel de tool en druk cycle start - lengte wordt daarna gemeten)
+    (MSG, Change the tool and press cycle start - length is measured afterwards)
   O150 ENDIF
   M0
 
-  ; ===== 3: nieuwe tool meten =====
+  ; ===== 3: measure the new tool =====
   G90
   G53 G0 Z[#<zstart>]
   G91
@@ -110,9 +120,9 @@ O<toolchange> sub
     G90
     #<zstop> = #<_abs_z>
     G53 G0 Z0
-    (LOG, FOUT: toolsensor niet geraakt met nieuwe tool - gestopt op machine-Z #<zstop>)
+    (LOG, ERROR: tool sensor not reached with the new tool - stopped at machine-Z #<zstop>)
     (LOGCLOSE)
-    (MSG, Toolsensor NIET geraakt met nieuwe tool - Z0 NIET aangepast! Druk ESCAPE om af te breken)
+    (MSG, Tool sensor NOT reached with the new tool - Z0 NOT adjusted! Press ESCAPE to abort)
     M0
     O<toolchange> return
   O130 ENDIF
@@ -122,28 +132,27 @@ O<toolchange> sub
   O131 IF [#5070 EQ 0]
     G90
     G53 G0 Z0
-    (LOG, FOUT: toolsensor kwijt bij nameten nieuwe tool - afgebroken)
+    (LOG, ERROR: tool sensor lost re-measuring the new tool - aborted)
     (LOGCLOSE)
-    (MSG, Toolsensor kwijt bij nameten nieuwe tool - Z0 NIET aangepast! Druk ESCAPE om af te breken)
+    (MSG, Tool sensor lost re-measuring the new tool - Z0 NOT adjusted! Press ESCAPE to abort)
     M0
     O<toolchange> return
   O131 ENDIF
   G90
   #<znew> = #5063
-  #<dz>   = [#<znew> - #<zref>]   ; lengteverschil nieuwe vs oude tool
+  #<dz>   = [#<znew> - #<zref>]   ; length difference new vs old tool
 
-  ; ===== 4: G54-Z verschuiven naar de nieuwe tool-lengte =====
-  ; we staan op het triggerpunt van de nieuwe tool; geef dat punt dezelfde
-  ; werk-Z als de referentie -> lengteverschil zit nu in G54
+  ; ===== 4: shift G54-Z to the new tool length =====
+  ; we are at the trigger point of the new tool; give that point the same
+  ; work-Z as the reference -> the length difference now lives in G54
   G10 L20 P1 Z[#<zref>]
-  M68 E13 Q[#<dz>]                ; -> paneel "laatste dZ"
-  (LOG, nieuwe tool T#<_selected_tool>: sensor werk-Z was #<znew>, dZ = #<dz> mm - G54-Z verschoven)
+  (LOG, new tool T#<_selected_tool>: sensor work-Z was #<znew>, dZ = #<dz> mm - G54-Z shifted)
   (LOGCLOSE)
-  (DEBUG, Tool-lengte verrekend: dZ = #<dz> mm)
+  (DEBUG, Tool length compensated: dZ = #<dz> mm)
 
   G53 G0 Z0
 
-  ; onder REMAP: registreer het nieuwe toolnummer
+  ; under REMAP: register the new tool number
   O140 IF [#<_selected_tool> GE 0]
     M61 Q#<_selected_tool>
   O140 ENDIF

@@ -35,7 +35,7 @@ from datetime import datetime
 from pathlib import Path
 
 UNIT_NUMBER_RE = re.compile(r"^\s*([-+]?\d+(?:[.,]\d+)?)")
-# tolerant: ook oude tabellen met 'T  1' / 'T 40' (spatie) worden gelezen
+# tolerant: old tables with spaced tokens ('T  1' / 'T 40') still parse
 TBL_LINE_RE = re.compile(
     r"^\s*T\s*(\d+)\s+P\s*(\d+)\s+D\s*([-+]?[\d.]+)\s+Z\s*([-+]?[\d.]+)")
 
@@ -252,8 +252,8 @@ def main(argv=None) -> int:
         "; ---------------------------------------------------------------"
         "--------------",
     ]
-    # LET OP: 'T40' moet EEN token zijn (geen spatie erin) voor de
-    # LinuxCNC-parser; uitlijnen doen we links van het token
+    # NOTE: 'T40' must be a SINGLE token (no inner space) for the
+    # LinuxCNC parser; alignment happens left of the token
     lines = header + [
         f"{'T%d' % r['tool']:<4s} {'P%d' % r['pocket']:<4s} "
         f"D{r['diam']:+.3f}  Z{r['z']:+.3f}   ; {r['comment']}".rstrip()

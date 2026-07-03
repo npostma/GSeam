@@ -57,7 +57,7 @@ class TestParsing(unittest.TestCase):
         self.assertEqual(conv.parse_number("3,5 mm"), 3.5)
         self.assertEqual(conv.parse_number("-1.25"), -1.25)
         self.assertIsNone(conv.parse_number(None))
-        self.assertIsNone(conv.parse_number("geen getal"))
+        self.assertIsNone(conv.parse_number("not a number"))
         self.assertEqual(conv.parse_number("x", 7.0), 7.0)
 
     def test_parse_pocket_map(self):
@@ -72,13 +72,13 @@ class TestParsing(unittest.TestCase):
         e = tool_entry(1, diam=6.0)
         self.assertEqual(conv.resolve_diameter(e), 6.0)
         del e["geometry"]["DC"]
-        self.assertEqual(conv.resolve_diameter(e), 6.0)  # uit expressions
+        self.assertEqual(conv.resolve_diameter(e), 6.0)  # from expressions fallback
 
     def test_build_comment(self):
         c = conv.build_comment(tool_entry(1, ttype="spot drill",
-                                          desc="90 graden", SIG=90))
+                                          desc="90 degrees", SIG=90))
         self.assertIn("spot drill", c)
-        self.assertIn("90 graden", c)
+        self.assertIn("90 degrees", c)
         self.assertIn("angle=90deg", c)
         self.assertIn("4F", c)
 
@@ -86,9 +86,9 @@ class TestParsing(unittest.TestCase):
 class TestExistingTable(TempDirTest):
     def test_reads_new_and_old_spaced_format(self):
         p = self.dir / "tool.tbl"
-        p.write_text("; kop\n"
-                     "T40  P40  D+3.000  Z-12.345   ; nieuw formaat\n"
-                     "T  1  P  1  D+3.000  Z+0.500   ; oud formaat\n",
+        p.write_text("; header\n"
+                     "T40  P40  D+3.000  Z-12.345   ; new format\n"
+                     "T  1  P  1  D+3.000  Z+0.500   ; old format\n",
                      encoding="utf-8")
         t = conv.read_existing_table(p)
         self.assertEqual(t[40]["z"], -12.345)
@@ -108,8 +108,8 @@ class TestMainEndToEnd(TempDirTest):
         lines = out.read_text().splitlines()
         rows = [ln for ln in lines if ln.startswith("T")]
         self.assertEqual(len(rows), 2)
-        self.assertTrue(rows[0].startswith("T1 "))    # gesorteerd op tool
-        self.assertTrue(rows[1].startswith("T40 "))   # EEN token, geen 'T 40'
+        self.assertTrue(rows[0].startswith("T1 "))    # sorted by tool
+        self.assertTrue(rows[1].startswith("T40 "))   # a SINGLE token, never 'T 40'
         self.assertIn("D+3.000", rows[0])
         self.assertIn("Z+0.000", rows[0])
 
@@ -117,14 +117,14 @@ class TestMainEndToEnd(TempDirTest):
         lib = self.write_lib(library(tool_entry(40), tool_entry(41)))
         out = self.dir / "tool.tbl"
         self.run_main([str(lib), "-o", str(out)])
-        # simuleer een gemeten Z
+        # simulate a measured Z
         txt = out.read_text().replace(
             "T40  P40  D+3.000  Z+0.000", "T40  P40  D+3.000  Z-12.345")
         out.write_text(txt, encoding="utf-8")
         code, text = self.run_main([str(lib), "-o", str(out)])
         self.assertEqual(code, 0)
-        self.assertIn("Z-12.345", out.read_text())      # behouden
-        self.assertIn("Z+0.000", out.read_text())       # T41 nog gewoon 0
+        self.assertIn("Z-12.345", out.read_text())      # preserved
+        self.assertIn("Z+0.000", out.read_text())       # T41 still plain 0
 
     def test_z_source_zero_resets(self):
         lib = self.write_lib(library(tool_entry(40)))
@@ -140,7 +140,7 @@ class TestMainEndToEnd(TempDirTest):
 
     def test_diff_output(self):
         old = self.dir / "tool.tbl"
-        old.write_text("T7 P7 D+2.000 Z+0.000 ; weg straks\n",
+        old.write_text("T7 P7 D+2.000 Z+0.000 ; to be removed\n",
                        encoding="utf-8")
         lib = self.write_lib(library(tool_entry(40)))
         code, text = self.run_main([str(lib), "-o", str(old), "--dry-run"])
@@ -148,7 +148,7 @@ class TestMainEndToEnd(TempDirTest):
         self.assertIn("+ T40 (new)", text)
         self.assertIn("- T7", text)
         self.assertIn("dry-run", text)
-        # dry-run: bestand onaangetast
+        # dry-run: file untouched
         self.assertIn("T7", old.read_text())
 
     def test_backup_created(self):
@@ -159,15 +159,15 @@ class TestMainEndToEnd(TempDirTest):
         self.assertTrue((self.dir / "tool.tbl.bak").exists())
 
     def test_duplicate_tool_number_skipped(self):
-        lib = self.write_lib(library(tool_entry(40, desc="eerste"),
-                                     tool_entry(40, desc="dubbel")))
+        lib = self.write_lib(library(tool_entry(40, desc="first"),
+                                     tool_entry(40, desc="duplicate")))
         out = self.dir / "tool.tbl"
         code, text = self.run_main([str(lib), "-o", str(out)])
         self.assertEqual(code, 0)
         rows = [ln for ln in out.read_text().splitlines()
                 if ln.startswith("T40")]
         self.assertEqual(len(rows), 1)
-        self.assertIn("eerste", rows[0])
+        self.assertIn("first", rows[0])
         self.assertIn("duplicate tool number T40", text)
 
     def test_pocket_collision_warns(self):
@@ -185,7 +185,7 @@ class TestMainEndToEnd(TempDirTest):
                        "--pocket-map", "T2:7"])
         txt = out.read_text()
         self.assertIn("T1   P101", txt)   # offset
-        self.assertIn("T2   P7", txt)     # expliciete map wint
+        self.assertIn("T2   P7", txt)     # explicit map wins
 
     def test_tool_without_number_skipped(self):
         e = tool_entry(0)

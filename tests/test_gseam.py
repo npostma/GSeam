@@ -86,14 +86,14 @@ class TestParseFile(TempDirTest):
         self.assertEqual(pf.wcs, {"G54"})
         self.assertEqual(len(pf.operations), 1)
         self.assertEqual(pf.operations[0].tool, 3)
-        # preamble: alleen setup-code, geen comments
+        # preamble: setup code only, no comments
         self.assertIn("G21", pf.preamble)
         self.assertIn("G53 G0 Z0.", pf.preamble)
         self.assertFalse(any(gseam.is_comment(s) for s in pf.preamble))
-        # tool-doc comment verzameld
+        # tool-doc comment collected
         self.assertEqual(len(pf.tool_comments), 1)
         self.assertIn("ZMIN=-5.0", pf.tool_comments[0])
-        # op-comment zit bij de operatie, footer (M30/%) is weggeknipt
+        # op-comment belongs to the operation; footer (M30/%) trimmed
         op_lines = pf.operations[0].lines
         self.assertEqual(op_lines[0], "(2D Pocket1)")
         self.assertFalse(any("M30" in s for s in op_lines))
@@ -164,8 +164,8 @@ class TestMerge(TempDirTest):
         self.assertEqual(stats["toolchange_calls"], 2)
         calls = [i for i, s in enumerate(out) if s == "O <toolchange> call"]
         self.assertEqual(len(calls), 2)
-        # T-prefetch voor de call (routine kent zo het doel-toolnummer),
-        # daarna de call, dan de echte toolwissel
+        # Tn prefetch before the call (so the routine knows the target
+        # tool), then the call, then the real toolchange
         self.assertEqual(out[calls[0] - 1], "T3")
         self.assertRegex(out[calls[0] + 1], r"^T3 M6")
         self.assertEqual(out[calls[1] - 1], "T5")
@@ -179,24 +179,24 @@ class TestMerge(TempDirTest):
         self.assertEqual(len(infos), 1)
         self.assertIn("drill - 5mm", infos[0])
         self.assertIn("D5mm", infos[0])
-        # geen haakjes uit de tabel-omschrijving in de comment (zou de
-        # G-code-comment vroegtijdig sluiten)
+        # no parens from the table description inside the comment
+        # (they would close the G-code comment early)
         self.assertNotRegex(infos[0][1:-1], r"[()]")
 
     def test_single_footer_and_header(self):
-        # NB: verschillende zmin -> verschillende tool-comments; identieke
-        # tool-comments worden bewust gededupliceerd
+        # NB: different zmin -> different tool comments; identical
+        # tool comments are deliberately deduplicated
         out, _ = gseam.merge(
             self.parsed(fusion_file(), fusion_file(name="B", zmin=-9.0)),
             "out.ngc", insert_toolchange_call=False, skip_same_tool=True,
             keep_all_comments=False)
         self.assertEqual(sum(s == "M30" for s in out), 1)
         self.assertEqual(out[-1], "M30")
-        # setup maar 1x (dedup): G21 komt exact 1x voor
+        # setup only once (dedup): G21 appears exactly once
         self.assertEqual(sum(s == "G21" for s in out), 1)
-        # tool-doc comments van BEIDE bestanden in de kop
+        # tool-doc comments from BOTH files in the header
         self.assertEqual(sum("ZMIN" in s for s in out), 2)
-        # nag-comments weg
+        # nag comments gone
         self.assertFalse(any("personal use" in s.lower() for s in out))
 
 
@@ -233,7 +233,7 @@ class TestFilesAndTable(TempDirTest):
                          ["op1.ngc", "op2.ngc", "op10.ngc"])
 
     def test_pxofn_order_two_digit(self):
-        # alfabetisch zou P1,P10,P11,P2,... geven - numeriek moet het zijn
+        # alphabetically this gives P1,P10,P11,P2,... - must be numeric
         for i in range(1, 12):
             self.write(f"job_P{i}of11.ngc", "x")
         files, errors = gseam.numbered_ngc_files(self.dir)
@@ -331,7 +331,7 @@ class TestAnalysis(unittest.TestCase):
                               SPOT_TABLE)
         self.assertTrue(card[0].startswith("(JOB:"))
         self.assertIn("T4", card[1])
-        self.assertIn("2 gaten", card[1])
+        self.assertIn("2 holes", card[1])
 
 
 class TestSecure(TempDirTest):
@@ -367,15 +367,15 @@ class TestSecure(TempDirTest):
         g54 = {"X": 500.0, "Y": 400.0, "Z": -90.0, "R": 0.0}
         ext = self._ext(0, 180, 0, 320, -25, 15)
         problems = gseam.secure_check(ext, limits, g54)
-        self.assertTrue(any("Y overschrijdt" in p for p in problems))
+        self.assertTrue(any("Y exceeds" in p for p in problems))
 
     def test_rotation_shifts_extents(self):
         limits = gseam.read_ini_limits(self._ini())
-        # 90 graden: werk-X wordt machine-Y -> X-bereik 0..600 past niet in Y
+        # 90 degrees: work X becomes machine Y -> X range 0..600 exceeds Y
         g54 = {"X": 100.0, "Y": 10.0, "Z": -90.0, "R": 90.0}
         ext = self._ext(0, 600, 0, 10, -5, 5)
         problems = gseam.secure_check(ext, limits, g54)
-        self.assertTrue(any("Y overschrijdt" in p for p in problems))
+        self.assertTrue(any("Y exceeds" in p for p in problems))
 
 
 class TestSvg(TempDirTest):
@@ -412,7 +412,7 @@ class TestMainEndToEnd(TempDirTest):
         self.assertEqual(content[0], "%")
         self.assertEqual(content[-1], "%")
         self.assertEqual(sum("M30" in s for s in content), 1)
-        # geen dubbele N-nummers
+        # no duplicate N numbers
         ns = [s.split()[0] for s in content if s.startswith("N")]
         self.assertEqual(len(ns), len(set(ns)))
         self.assertIn("Zmin T5: -9.000", text)
