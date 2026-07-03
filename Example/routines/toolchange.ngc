@@ -26,6 +26,14 @@ O<toolchange> sub
   #<f_fast> = #<_ini[TOOLSENSOR]FAST_F>
   #<f_slow> = #<_ini[TOOLSENSOR]SLOW_F>
 
+  ; zoekslag begrenzen tot 1mm boven de Z-soft-limit: een probe-beweging
+  ; waarvan het EINDPUNT buiten de limieten ligt weigert LinuxCNC vooraf
+  ; (dan blijft hij op starthoogte hangen - gezien op de machine 2026-07-03)
+  #<zroom> = [#<zstart> - #<_ini[AXIS_Z]MIN_LIMIT> - 1]
+  O105 IF [#<zdepth> GT #<zroom>]
+    #<zdepth> = #<zroom>
+  O105 ENDIF
+
   ; historie-log: APPEND zodat je altijd kunt terugzien wat er gebeurd is
   (LOGAPPEND,toolchange.log)
   (LOG, ==== toolwissel: van T#<_current_tool> naar T#<_selected_tool> ====)
@@ -56,8 +64,9 @@ O<toolchange> sub
   G38.3 Z-[#<zdepth>]
   O120 IF [#5070 EQ 0]
     G90
+    #<zstop> = #<_abs_z>
     G53 G0 Z0
-    (LOG, FOUT: toolsensor niet geraakt bij referentie - afgebroken)
+    (LOG, FOUT: toolsensor niet geraakt bij referentie - gestopt op machine-Z #<zstop>)
     (LOGCLOSE)
     (MSG, Toolsensor NIET geraakt bij referentie - GEEN meting! Druk ESCAPE om af te breken)
     M0
@@ -82,7 +91,13 @@ O<toolchange> sub
 
   ; ===== 2: wisselen =====
   G53 G0 Z0
-  (MSG, Wissel de tool en druk cycle start - lengte wordt daarna gemeten)
+  ; toon het DOEL-toolnummer als dat bekend is (via T-prefetch of REMAP);
+  ; DEBUG expandeert parameters, MSG niet
+  O150 IF [[#<_selected_tool> GT 0] AND [#<_selected_tool> NE #<_current_tool>]]
+    (DEBUG, WISSEL naar tool T#<_selected_tool> en druk cycle start)
+  O150 ELSE
+    (MSG, Wissel de tool en druk cycle start - lengte wordt daarna gemeten)
+  O150 ENDIF
   M0
 
   ; ===== 3: nieuwe tool meten =====
@@ -93,8 +108,9 @@ O<toolchange> sub
   G38.3 Z-[#<zdepth>]
   O130 IF [#5070 EQ 0]
     G90
+    #<zstop> = #<_abs_z>
     G53 G0 Z0
-    (LOG, FOUT: toolsensor niet geraakt met nieuwe tool - afgebroken)
+    (LOG, FOUT: toolsensor niet geraakt met nieuwe tool - gestopt op machine-Z #<zstop>)
     (LOGCLOSE)
     (MSG, Toolsensor NIET geraakt met nieuwe tool - Z0 NIET aangepast! Druk ESCAPE om af te breken)
     M0

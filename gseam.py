@@ -581,6 +581,9 @@ def merge(parsed: list[ParsedFile], out_name: str, *,
                         stats["skipped_toolchanges"] += 1
                         continue
                     if insert_toolchange_call:
+                        # bare Tn prefetch first, so the routine knows the
+                        # TARGET tool and can show it at the swap pause
+                        out.append(f"T{op.tool}")
                         out.append("O <toolchange> call")
                         stats["toolchange_calls"] += 1
                     stats["toolchanges"] += 1

@@ -164,8 +164,11 @@ class TestMerge(TempDirTest):
         self.assertEqual(stats["toolchange_calls"], 2)
         calls = [i for i, s in enumerate(out) if s == "O <toolchange> call"]
         self.assertEqual(len(calls), 2)
-        # de call staat direct voor de toolwissel
+        # T-prefetch voor de call (routine kent zo het doel-toolnummer),
+        # daarna de call, dan de echte toolwissel
+        self.assertEqual(out[calls[0] - 1], "T3")
         self.assertRegex(out[calls[0] + 1], r"^T3 M6")
+        self.assertEqual(out[calls[1] - 1], "T5")
 
     def test_single_footer_and_header(self):
         # NB: verschillende zmin -> verschillende tool-comments; identieke
