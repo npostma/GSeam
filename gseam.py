@@ -67,8 +67,9 @@ RE_OWORD = re.compile(r"^\s*[Oo][\s<]")
 
 # comments considered "important" (operation/tool info) - kept by default
 IMPORTANT_COMMENT = re.compile(
-    r"^\(\s*(2d|3d|drill|contour|pocket|adaptive|facing|slot|bore|tap|"
-    r"thread|trace|engrave|operation|tool|change|t\d+\s)", re.IGNORECASE)
+    r"^\(\s*(2d|3d|drill|spot|contour|pocket|adaptive|facing|slot|bore|tap|"
+    r"thread|trace|engrave|face|ramp|helix|circular|operation|tool|change|"
+    r"t\d+\s)", re.IGNORECASE)
 # boilerplate that is actively dropped even with default filtering
 NAG_COMMENT = re.compile(
     r"^\(\s*(when using fusion|moves is reduced|which can increase|"

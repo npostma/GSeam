@@ -65,7 +65,7 @@ class TestHelpers(unittest.TestCase):
 
     def test_comment_filter(self):
         keep = ["(2D Pocket1)", "(T3 D=3. CR=0.)", "(Drill5)",
-                "(TOOL something)"]
+                "(SPOTDRILLING)", "(Face2)", "(TOOL something)"]
         drop = ["(Machine)", "(  vendor LinuxCNC)", "(SIMPLE1)",
                 "(When using Fusion for personal use, x)"]
         for c in keep:
