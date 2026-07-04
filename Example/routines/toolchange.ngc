@@ -99,6 +99,21 @@ O<toolchange> sub
   #<zref> = #5063                 ; sensor work-Z with the CURRENT tool
   (LOG, reference T#<_current_tool>: sensor work-Z = #<zref>)
 
+  ; WATCHDOG: the OLD tool must still be the length it had at its own
+  ; change measurement (the anchor). A deviation means it broke during
+  ; the operation, slipped in the collet, or was swapped unmeasured.
+  ; Proceeding would pass the breakage on to the new tool as a frame shift.
+  O160 IF [EXISTS[#<_sensor_anchor>]]
+    O161 IF [[#<_sensor_anchor> GT -9000] AND [ABS[#<zref> - #<_sensor_anchor>] GT 0.5]]
+      G53 G0 Z0
+      (LOG, ERROR: old tool changed length: anchor #<_sensor_anchor> vs now #<zref> - BROKEN? - aborted)
+      (LOGCLOSE)
+      (MSG, Old tool CHANGED LENGTH - broken? Press ESCAPE, mount a good tool + re-zero)
+      M0
+      O<toolchange> return
+    O161 ENDIF
+  O160 ENDIF
+
   ; ===== 2: swap =====
   G53 G0 Z0
   ; show the TARGET tool number when it is known (via Tn prefetch or REMAP);
@@ -146,6 +161,7 @@ O<toolchange> sub
   ; we are at the trigger point of the new tool; give that point the same
   ; work-Z as the reference -> the length difference now lives in G54
   G10 L20 P1 Z[#<zref>]
+  #<_sensor_anchor> = #<zref>     ; anchor for the NEXT change's breakage watchdog
   (LOG, new tool T#<_selected_tool>: sensor work-Z was #<znew>, dZ = #<dz> mm - G54-Z shifted)
   (LOGCLOSE)
   (DEBUG, Tool length compensated: dZ = #<dz> mm)
