@@ -8,7 +8,7 @@
 ; The idea (comparative - no absolute calibration needed, collet stickout
 ; may differ on every change):
 ;   1) measure the CURRENT tool on the sensor -> reference work-Z
-;   2) park high, M0: swap the tool, cycle start
+;   2) park high, M0: swap the tool, resume (S)
 ;   3) measure the NEW tool on the sensor
 ;   4) shift G54-Z so the new tool has the same work-Z (G10 L20)
 ;
@@ -111,7 +111,7 @@ O<toolchange> sub
     O161 IF [[#<_sensor_anchor> GT -9000] AND [ABS[#<zref> - #<_sensor_anchor>] GT 0.5]]
       G53 G0 Z0
       (LOG, WARNING: old tool changed length: anchor #<_sensor_anchor> vs measured #<zref> - BROKEN? - measurement discarded, anchor used)
-      (DEBUG, TOOL BROKEN/SLIPPED: #<_sensor_anchor> -> #<zref>. Cycle start = swap and CONTINUE with valid frame. ESCAPE = stop)
+      (DEBUG, TOOL BROKEN/SLIPPED: #<_sensor_anchor> -> #<zref>. RESUME (S) = swap and CONTINUE with valid frame. ESCAPE = stop)
       M0
       #<zref> = #<_sensor_anchor>
     O161 ENDIF
@@ -122,9 +122,9 @@ O<toolchange> sub
   ; show the TARGET tool number when it is known (via Tn prefetch or REMAP);
   ; DEBUG expands parameters, MSG does not
   O150 IF [[#<_selected_tool> GT 0] AND [#<_selected_tool> NE #<_current_tool>]]
-    (DEBUG, CHANGE to tool T#<_selected_tool> and press cycle start)
+    (DEBUG, CHANGE to tool T#<_selected_tool> - then press RESUME (pause button / S key))
   O150 ELSE
-    (MSG, Change the tool and press cycle start - length is measured afterwards)
+    (MSG, Change the tool - then press RESUME (pause button / S key) - length is measured next)
   O150 ENDIF
   M0
 
