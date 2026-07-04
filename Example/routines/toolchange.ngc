@@ -103,14 +103,17 @@ O<toolchange> sub
   ; change measurement (the anchor). A deviation means it broke during
   ; the operation, slipped in the collet, or was swapped unmeasured.
   ; Proceeding would pass the breakage on to the new tool as a frame shift.
+  ; On mismatch the old tool's measurement is worthless, but the FRAME is
+  ; still valid (anchored while the tool was whole) - so we can substitute
+  ; the anchor as reference and continue correctly; only the broken tool's
+  ; work needs redoing afterwards. ESCAPE at the pause stops instead.
   O160 IF [EXISTS[#<_sensor_anchor>]]
     O161 IF [[#<_sensor_anchor> GT -9000] AND [ABS[#<zref> - #<_sensor_anchor>] GT 0.5]]
       G53 G0 Z0
-      (LOG, ERROR: old tool changed length: anchor #<_sensor_anchor> vs now #<zref> - BROKEN? - aborted)
-      (LOGCLOSE)
-      (MSG, Old tool CHANGED LENGTH - broken? Press ESCAPE, mount a good tool + re-zero)
+      (LOG, WARNING: old tool changed length: anchor #<_sensor_anchor> vs measured #<zref> - BROKEN? - measurement discarded, anchor used)
+      (DEBUG, TOOL BROKEN/SLIPPED: #<_sensor_anchor> -> #<zref>. Cycle start = swap and CONTINUE with valid frame. ESCAPE = stop)
       M0
-      O<toolchange> return
+      #<zref> = #<_sensor_anchor>
     O161 ENDIF
   O160 ENDIF
 
