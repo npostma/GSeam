@@ -241,6 +241,16 @@ class TestFilesAndTable(TempDirTest):
         self.assertEqual([f.name for f in files],
                          [f"job_P{i}of11.ngc" for i in range(1, 12)])
 
+    def test_own_merged_output_is_skipped(self):
+        # a previous merge result in the same folder must not become input
+        self.write("job_P1of2.ngc", "x")
+        self.write("job_P2of2.ngc", "x")
+        self.write("job.ngc", "%\n(JOB - merged by gseam)\n(source: ...)\nM30\n%\n")
+        files, errors = gseam.numbered_ngc_files(self.dir)
+        self.assertEqual(errors, [])
+        self.assertEqual([f.name for f in files],
+                         ["job_P1of2.ngc", "job_P2of2.ngc"])
+
     def test_pxofn_missing_part_aborts(self):
         for i in (1, 2, 4):
             self.write(f"job_P{i}of4.ngc", "x")

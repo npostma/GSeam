@@ -668,7 +668,19 @@ def numbered_ngc_files(directory: Path) -> tuple[list[Path], list[str]]:
         (op1.ngc, op2.ngc, ...); files without a number are ignored.
     Mixing both schemes in one directory is an error.
     """
-    all_files = sorted(directory.glob("*.ngc"))
+    def _is_own_output(path: Path) -> bool:
+        """Skip files gseam wrote itself (recognized by the header line) -
+        otherwise re-merging a folder that also holds the previous merge
+        result would treat that result as an input part."""
+        try:
+            with path.open(encoding="utf-8", errors="replace") as f:
+                head = "".join(f.readline() for _ in range(4))
+            return "merged by gseam" in head
+        except OSError:
+            return False
+
+    all_files = [p for p in sorted(directory.glob("*.ngc"))
+                 if not _is_own_output(p)]
     parts = [(p, RE_PART_OF.search(p.name)) for p in all_files]
     matched = [(p, m) for p, m in parts if m]
 
