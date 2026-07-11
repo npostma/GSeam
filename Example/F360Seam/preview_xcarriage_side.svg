@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="198" viewBox="0 0 900 198">
+<rect x="0" y="0" width="900" height="110" fill="#fafafa" stroke="#999"/>
+<circle cx="54.9" cy="54.9" r="27.4" fill="none" stroke="#e6194b" stroke-width="1.5"/>
+<circle cx="186.6" cy="54.9" r="27.4" fill="none" stroke="#e6194b" stroke-width="1.5"/>
+<circle cx="318.3" cy="54.9" r="27.4" fill="none" stroke="#e6194b" stroke-width="1.5"/>
+<circle cx="450.0" cy="54.9" r="27.4" fill="none" stroke="#e6194b" stroke-width="1.5"/>
+<circle cx="581.7" cy="54.9" r="27.4" fill="none" stroke="#e6194b" stroke-width="1.5"/>
+<circle cx="713.4" cy="54.9" r="27.4" fill="none" stroke="#e6194b" stroke-width="1.5"/>
+<circle cx="845.1" cy="54.9" r="27.4" fill="none" stroke="#e6194b" stroke-width="1.5"/>
+<circle cx="54.9" cy="54.9" r="11.0" fill="none" stroke="#3cb44b" stroke-width="1.5"/>
+<circle cx="186.6" cy="54.9" r="11.0" fill="none" stroke="#3cb44b" stroke-width="1.5"/>
+<circle cx="318.3" cy="54.9" r="11.0" fill="none" stroke="#3cb44b" stroke-width="1.5"/>
+<circle cx="450.0" cy="54.9" r="11.0" fill="none" stroke="#3cb44b" stroke-width="1.5"/>
+<circle cx="581.7" cy="54.9" r="11.0" fill="none" stroke="#3cb44b" stroke-width="1.5"/>
+<circle cx="713.4" cy="54.9" r="11.0" fill="none" stroke="#3cb44b" stroke-width="1.5"/>
+<circle cx="845.1" cy="54.9" r="11.0" fill="none" stroke="#3cb44b" stroke-width="1.5"/>
+<circle cx="54.9" cy="54.9" r="18.7" fill="none" stroke="#4363d8" stroke-width="1.5"/>
+<circle cx="186.6" cy="54.9" r="18.7" fill="none" stroke="#4363d8" stroke-width="1.5"/>
+<circle cx="318.3" cy="54.9" r="18.7" fill="none" stroke="#4363d8" stroke-width="1.5"/>
+<circle cx="450.0" cy="54.9" r="18.7" fill="none" stroke="#4363d8" stroke-width="1.5"/>
+<circle cx="581.7" cy="54.9" r="18.7" fill="none" stroke="#4363d8" stroke-width="1.5"/>
+<circle cx="713.4" cy="54.9" r="18.7" fill="none" stroke="#4363d8" stroke-width="1.5"/>
+<circle cx="845.1" cy="54.9" r="18.7" fill="none" stroke="#4363d8" stroke-width="1.5"/>
+<text x="4" y="126" font-size="12" font-family="monospace">X 23..167  Y 10..10 mm</text>
+<circle cx="10" cy="144" r="6" fill="none" stroke="#e6194b" stroke-width="2"/>
+<text x="22" y="148" font-size="12" font-family="monospace">T5 spot drill - SpotDrill 10mm angle=120deg, 2F (7 holes)</text>
+<circle cx="10" cy="166" r="6" fill="none" stroke="#3cb44b" stroke-width="2"/>
+<text x="22" y="170" font-size="12" font-family="monospace">T107 drill - HBM HSS-Co 5% 4mm angle=118deg, 2F (7 holes)</text>
+<circle cx="10" cy="188" r="6" fill="none" stroke="#4363d8" stroke-width="2"/>
+<text x="22" y="192" font-size="12" font-family="monospace">T25 drill - HSS 6.8 angle=118deg, 2F (7 holes)</text>
+</svg>

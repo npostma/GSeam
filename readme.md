@@ -62,6 +62,9 @@ python3 gseam.py --check op1.ngc op2.ngc
   per tool description, hole count, Zmin and a rough time estimate.
 - **`--preview`** — top-down SVG next to the output (`--preview-file PATH`):
   holes at true tool diameter, one colour per tool, feed paths, legend.
+  A real example (7×M8 thread prep: spot → Ø4 pilot → Ø6.8 tap drill):
+
+  ![gseam SVG preview example](Example/F360Seam/preview_xcarriage_side.svg)
 - Non-zero exit code on validation errors — safe for shell pipelines.
 - `--dry-run` shows the plan and report without writing.
 
