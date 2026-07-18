@@ -65,6 +65,9 @@ python3 gseam.py --check op1.ngc op2.ngc
   A real example (7×M8 thread prep: spot → Ø4 pilot → Ø6.8 tap drill):
 
   ![gseam SVG preview example](Example/F360Seam/preview_xcarriage_side.svg)
+- **`--archive-parts DIR`** — after a successful merge, move the input part
+  files into DIR (relative to the output's folder): the working folder keeps
+  only ready-to-run programs. Never runs on `--check`/`--dry-run`/errors.
 - Non-zero exit code on validation errors — safe for shell pipelines.
 - `--dry-run` shows the plan and report without writing.
 

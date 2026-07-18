@@ -241,6 +241,38 @@ class TestFilesAndTable(TempDirTest):
         self.assertEqual([f.name for f in files],
                          [f"job_P{i}of11.ngc" for i in range(1, 12)])
 
+    def test_archive_parts_moves_inputs(self):
+        a = self.write("job_P1of2.ngc", fusion_file())
+        b = self.write("job_P2of2.ngc", fusion_file(name="B", tool=5))
+        out = self.dir / "job.ngc"
+        import io
+        from contextlib import redirect_stdout
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            code = gseam.main([str(a), str(b), str(out),
+                               "--no-tool-check", "--archive-parts", "parts"])
+        text = buf.getvalue()
+        self.assertEqual(code, 0)
+        self.assertTrue(out.exists())
+        self.assertFalse(a.exists())
+        self.assertFalse(b.exists())
+        self.assertTrue((self.dir / "parts" / "job_P1of2.ngc").exists())
+        self.assertTrue((self.dir / "parts" / "job_P2of2.ngc").exists())
+        self.assertIn("archived: 2", text)
+
+    def test_archive_parts_skipped_on_dry_run(self):
+        a = self.write("job_P1of2.ngc", fusion_file())
+        b = self.write("job_P2of2.ngc", fusion_file(name="B"))
+        out = self.dir / "job.ngc"
+        import io
+        from contextlib import redirect_stdout
+        with redirect_stdout(io.StringIO()):
+            code = gseam.main([str(a), str(b), str(out), "--dry-run",
+                               "--no-tool-check", "--archive-parts", "parts"])
+        self.assertEqual(code, 0)
+        self.assertTrue(a.exists() and b.exists())
+        self.assertFalse((self.dir / "parts").exists())
+
     def test_own_merged_output_is_skipped(self):
         # a previous merge result in the same folder must not become input
         self.write("job_P1of2.ngc", "x")

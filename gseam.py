@@ -748,6 +748,10 @@ def main(argv=None) -> int:
     ap.add_argument("--preview-file", type=Path, metavar="SVG",
                     help="custom path for the SVG preview (implies "
                          "--preview)")
+    ap.add_argument("--archive-parts", type=Path, metavar="DIR",
+                    help="after a successful merge, move the input part "
+                         "files into DIR (relative to the output's folder) "
+                         "- keeps the working folder clean")
     ap.add_argument("--log", type=Path)
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args(argv)
@@ -917,6 +921,20 @@ def main(argv=None) -> int:
             say(f"preview: {svg}")
         else:
             say("preview: no XY data to draw")
+
+    if args.archive_parts:
+        arch = args.archive_parts
+        if not arch.is_absolute():
+            arch = out_path.resolve().parent / arch
+        arch.mkdir(parents=True, exist_ok=True)
+        moved = 0
+        for f in files:
+            src = f.resolve()
+            if arch in src.parents:
+                continue          # staat al in het archief (her-merge)
+            src.replace(arch / src.name)   # zelfde naam = nieuwere export wint
+            moved += 1
+        say(f"archived: {moved} part file(s) -> {arch}")
 
     _write_log(args.log, report)
     return 0
